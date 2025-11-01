@@ -13,6 +13,7 @@
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
   const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2 };
+  $: currentId = hoveredId ?? $selectedId ?? null;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -70,7 +71,7 @@
       }));
   }
 
-  $: hoveredNeighbors = getNeighborsFor(hoveredId, 10);
+  $: hoveredNeighbors = getNeighborsFor(currentId, 10);
 
 </script>
 
@@ -150,24 +151,24 @@
       </div>
 
       <aside id="preview-panel" class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-full lg:w-[360px] flex-shrink-0 {panelOpen ? 'block' : 'hidden'}" aria-hidden={!panelOpen}>
-        <h3 class="font-semibold mb-2">Preview</h3>
-        {#if hoveredId && $byId.get(hoveredId)}
-          {@const h = $byId.get(hoveredId)!}
-          {@const title = Array.isArray(h.title) ? h.title[0] : h.title}
-          {#if h.thumbnail}
-            <img src={h.thumbnail} alt={title || 'thumbnail'} class="w-full h-auto rounded mb-2" />
+        <h3 class="font-semibold mb-2">Details</h3>
+        {#if currentId && $byId.get(currentId)}
+          {@const it = $byId.get(currentId)!}
+          {@const title = Array.isArray(it.title) ? it.title[0] : it.title}
+          {#if it.thumbnail}
+            <img src={it.thumbnail} alt={title || 'thumbnail'} class="w-full h-auto rounded mb-2" />
           {/if}
           <div class="space-y-1">
             <div class="font-medium">{title ?? '(no title)'}</div>
-            <div class="text-xs text-gray-600">{h.year ?? ''} · {(h.language && h.language.join(', ')) || ''}</div>
-            {#if h.country}
-              <div class="text-xs">Country: {h.country}</div>
+            <div class="text-xs text-gray-600">{it.year ?? ''} · {(it.language && it.language.join(', ')) || ''}</div>
+            {#if it.country}
+              <div class="text-xs">Country: {it.country}</div>
             {/if}
-            {#if h.collection}
-              <div class="text-xs">Collection: {h.collection}</div>
+            {#if it.collection}
+              <div class="text-xs">Collection: {it.collection}</div>
             {/if}
-            {#if h.link}
-              <a href={h.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
+            {#if it.link}
+              <a href={it.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
             {/if}
           </div>
 
@@ -183,7 +184,7 @@
                   {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
                   <li class="py-2">
                     <div class="flex items-start justify-between gap-2">
-                      <button class="text-left text-sm hover:underline" on:click={() => selectedId.set(n.id)}>
+                      <button class="text-left text-sm hover:underline" on:click={() => { selectedId.set(n.id); hoveredId = null; }}>
                         {t ?? n.title ?? n.id}
                       </button>
                       <span class="text-xs text-gray-600 whitespace-nowrap">{(n.score ?? 0).toFixed(2)}</span>
@@ -202,20 +203,7 @@
             </div>
           {/if}
         {:else}
-          <p class="text-sm text-gray-600">Hover a node to preview its image and metadata.</p>
-        {/if}
-
-        {#if $selectedId && $byId.get($selectedId)}
-          {@const s = $byId.get($selectedId)!}
-          {@const stitle = Array.isArray(s.title) ? s.title[0] : s.title}
-          <div class="mt-4 border-t pt-3">
-            <h4 class="font-semibold">Selected</h4>
-            <div class="text-sm">{stitle ?? '(no title)'}</div>
-            <div class="text-xs text-gray-600">{s.year ?? ''} · {(s.language && s.language.join(', ')) || ''}</div>
-            {#if s.link}
-              <a href={s.link} target="_blank" class="text-blue-600 text-sm hover:underline">Open</a>
-            {/if}
-          </div>
+          <p class="text-sm text-gray-600">Hover a node to preview it; click a node to keep it here until you hover another.</p>
         {/if}
       </aside>
     </div>

@@ -9,6 +9,7 @@
   let networkGraph: any;
   let maxNodes = 500;
   let minScore = 0.02;
+  let panelOpen = true;
   let hoveredId: string | null = null;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
@@ -24,6 +25,10 @@
   onMount(() => {
     items.set(data.metadata || []);
     edges.set(normalizeNeighbors(data.neighbors));
+    if (typeof window !== 'undefined') {
+      // Open panel by default on large screens, collapse on small
+      panelOpen = window.innerWidth >= 1024; // lg breakpoint
+    }
   });
 
   let query = '';
@@ -73,14 +78,14 @@
   <div class="border rounded-lg bg-white p-4 space-y-3">
     <div class="flex gap-4 items-center flex-wrap">
       <div>
-        <label class="text-sm font-medium">Max Nodes:</label>
-        <input type="range" min="50" max="2000" step="50" bind:value={maxNodes} class="ml-2" />
+        <label class="text-sm font-medium" for="maxNodesRange">Max Nodes:</label>
+        <input id="maxNodesRange" type="range" min="50" max="2000" step="50" bind:value={maxNodes} class="ml-2" />
         <span class="text-sm ml-2">{maxNodes}</span>
       </div>
       
       <div>
-        <label class="text-sm font-medium">Min Score:</label>
-        <input type="range" min="0" max="0.1" step="0.01" bind:value={minScore} class="ml-2" />
+        <label class="text-sm font-medium" for="minScoreRange">Min Score:</label>
+        <input id="minScoreRange" type="range" min="0" max="0.1" step="0.01" bind:value={minScore} class="ml-2" />
         <span class="text-sm ml-2">{minScore.toFixed(2)}</span>
       </div>
 
@@ -95,9 +100,17 @@
         on:click={() => networkGraph?.reheat()}>
         Re-simulate
       </button>
+
+      <button
+        class="ml-auto px-3 py-1 rounded text-sm border bg-gray-100 hover:bg-gray-200"
+        aria-controls="preview-panel"
+        aria-expanded={panelOpen}
+        on:click={() => (panelOpen = !panelOpen)}>
+        {panelOpen ? 'Hide panel' : 'Show panel'}
+      </button>
     </div>
 
-    <div class="flex gap-4 items-start">
+    <div class="flex flex-col lg:flex-row gap-4 items-start">
       <div class="flex-1 min-w-0">
         {#if browser}
           <NetworkGraph 
@@ -117,7 +130,7 @@
         {/if}
       </div>
 
-  <aside class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-[360px] flex-shrink-0">
+      <aside id="preview-panel" class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-full lg:w-[360px] flex-shrink-0 {panelOpen ? 'block' : 'hidden'}" aria-hidden={!panelOpen}>
         <h3 class="font-semibold mb-2">Preview</h3>
         {#if hoveredId && $byId.get(hoveredId)}
           {@const h = $byId.get(hoveredId)!}

@@ -6,7 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
-df = pd.read_json('data/metadata/europeana_metadata.json')
+df = pd.read_json('static/data/europeana_metadata.json')
 
 df.head().to_csv('data/metrics/europeana_metadata.csv', index=False)
 

@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 ##### Load metadata #####
 
-df = pd.read_json('data/metadata/europeana_metadata.json')
+df = pd.read_json('static/data/europeana_metadata.json')
 
 df['title'] = df['title'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
 df['concepts'] = df['concepts'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
@@ -131,7 +131,7 @@ for i, row in df.iterrows():
     neighbors[df.loc[i, "id"]] = items
 
 # Save neighbors to JSON  
-out_dir = Path('data/neighbors')
+out_dir = Path('static/data')
 os.makedirs(out_dir, exist_ok=True)
 
 with open(out_dir / 'europeana_neighbors.json', 'w', encoding='utf-8') as f:

@@ -45,7 +45,7 @@ class Europeana:
 
         return base
 
-    def get_metadata_by_collection(self, collection_name, rows=24, start=1):
+    def get_metadata_by_collection(self, collection_name, rows=50, start=5):
         data = self.fetch_europeana_data(
         query="*",
         qf=[
@@ -115,8 +115,8 @@ class Europeana:
         print(f"Total records fetched: {len(all_metadata)}")
 
         if savefile:
-            os.makedirs('data/metadata', exist_ok=True)
-            with open('data/metadata/europeana_metadata.json', 'w', encoding='utf-8') as file:
+            os.makedirs('static/data', exist_ok=True)
+            with open('static/data/europeana_metadata.json', 'w', encoding='utf-8') as file:
                 json.dump(all_metadata, file, indent=4, ensure_ascii=False)
         else:
             return all_metadata

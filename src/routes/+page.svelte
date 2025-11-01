@@ -83,8 +83,14 @@
     hoveredId = id;
     // Track hover-intent (analytics) after 1s without affecting personalization
     if (id) {
+      const lockedId = id; // capture for timer closure
       hoverTimer = setTimeout(() => {
-        userInteractions.trackHover(id);
+        // Only act if still hovering the same node
+        if (hoveredId === lockedId) {
+          userInteractions.trackHover(lockedId);
+          // Pin details so preview persists despite layout changes
+          selectedId.set(lockedId);
+        }
         hoverTimer = null;
       }, 3000); // 3s hover-intent
     }

@@ -11,6 +11,8 @@
   let minScore = 0.02;
   let panelOpen = true;
   let hoveredId: string | null = null;
+  let hoveredNeighbors: Array<any> = [];
+  const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2 };
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -52,6 +54,23 @@
   function handleNodeHover(id: string | null) {
     hoveredId = id;
   }
+
+  // Compute neighbors for the hovered node with item details
+  function getNeighborsFor(id: string | null, max = 10) {
+    if (!id) return [];
+    const neighMap = data?.neighbors as any;
+    const list = Array.isArray(neighMap)
+      ? [] // can't compute detailed neighbors from edge list
+      : (neighMap?.[id] ?? []);
+    return list
+      .slice(0, max)
+      .map((n: any) => ({
+        ...n,
+        item: $byId.get(n.id)
+      }));
+  }
+
+  $: hoveredNeighbors = getNeighborsFor(hoveredId, 10);
 
 </script>
 
@@ -147,13 +166,41 @@
             {#if h.collection}
               <div class="text-xs">Collection: {h.collection}</div>
             {/if}
-            {#if h.place_label}
-              <div class="text-xs">Place: {Array.isArray(h.place_label) ? h.place_label.join(', ') : h.place_label}</div>
-            {/if}
             {#if h.link}
               <a href={h.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
             {/if}
           </div>
+
+          <!-- Neighbor list with similarity breakdown -->
+          {#if hoveredNeighbors.length}
+            <div class="mt-4 border-t pt-3">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-semibold">Top neighbors</h4>
+                <span class="text-[10px] text-gray-500">score = {NEIGHBOR_WEIGHTS.text}·Text + {NEIGHBOR_WEIGHTS.date}·Date + {NEIGHBOR_WEIGHTS.place}·Place</span>
+              </div>
+              <ul class="divide-y">
+                {#each hoveredNeighbors as n}
+                  {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
+                  <li class="py-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <button class="text-left text-sm hover:underline" on:click={() => selectedId.set(n.id)}>
+                        {t ?? n.title ?? n.id}
+                      </button>
+                      <span class="text-xs text-gray-600 whitespace-nowrap">{(n.score ?? 0).toFixed(2)}</span>
+                    </div>
+                    <div class="mt-1">
+                      <div class="flex items-center gap-2 text-[11px] text-gray-600">
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>Text {Number(n.S_text ?? 0).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>Date {Number(n.S_date ?? 0).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>Place {Number(n.S_place ?? 0).toFixed(2)}</span>
+                      </div>
+                      
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
         {:else}
           <p class="text-sm text-gray-600">Hover a node to preview its image and metadata.</p>
         {/if}

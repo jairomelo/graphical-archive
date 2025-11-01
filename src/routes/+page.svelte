@@ -151,7 +151,7 @@
 <div class="p-4 space-y-4">
   <div class="flex justify-between items-center">
     <h1 class="text-2xl font-bold">Graphical Archive</h1>
-    <h2 class="text-sm text-gray-600">A Conceptual Visualization for a Graphical Topology of the Archive</h2>
+    <h2 class="text-sm text-gray-600">A Conceptual Visualization of the Graphical Topology of the Archive</h2>
     
     <div class="flex gap-2">
       <button 

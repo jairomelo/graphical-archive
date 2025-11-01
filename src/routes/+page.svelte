@@ -13,6 +13,13 @@
   const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
   $: currentId = hoveredId ?? $selectedId ?? null;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  // Resizable panel state (desktop)
+  let panelWidth = 360; // px
+  const PANEL_MIN = 260;
+  const PANEL_MAX = 640;
+  let isResizing = false;
+  let resizeStartX = 0;
+  let resizeStartWidth = 0;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -30,8 +37,18 @@
     if (typeof window !== 'undefined') {
       // Open panel by default on large screens, collapse on small
       panelOpen = window.innerWidth >= 1024; // lg breakpoint
+      // Restore saved panel width
+      const savedW = Number(localStorage.getItem('ga_panel_width'));
+      if (!Number.isNaN(savedW) && savedW >= PANEL_MIN && savedW <= PANEL_MAX) {
+        panelWidth = savedW;
+      }
     }
   });
+
+  // Persist panelWidth across the session
+  $: if (browser) {
+    try { localStorage.setItem('ga_panel_width', String(panelWidth)); } catch {}
+  }
 
   let query = '';
   $: q = query.toLowerCase();
@@ -71,6 +88,39 @@
         hoverTimer = null;
       }, 3000); // 3s hover-intent
     }
+  }
+
+  // Panel resizing handlers (desktop only)
+  function startResize(e: MouseEvent | TouchEvent) {
+    if (!panelOpen) return;
+    isResizing = true;
+    resizeStartX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    resizeStartWidth = panelWidth;
+    window.addEventListener('mousemove', onResizeMove);
+    window.addEventListener('touchmove', onResizeMove as any, { passive: false });
+    window.addEventListener('mouseup', endResize);
+    window.addEventListener('touchend', endResize as any);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function onResizeMove(e: MouseEvent | TouchEvent) {
+    if (!isResizing) return;
+    if ('preventDefault' in e) { try { (e as any).preventDefault(); } catch {} }
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const delta = resizeStartX - clientX; // drag left (smaller X) => increase width
+    const next = Math.max(PANEL_MIN, Math.min(PANEL_MAX, resizeStartWidth + delta));
+    panelWidth = next;
+  }
+
+  function endResize() {
+    isResizing = false;
+    window.removeEventListener('mousemove', onResizeMove);
+    window.removeEventListener('touchmove', onResizeMove as any);
+    window.removeEventListener('mouseup', endResize);
+    window.removeEventListener('touchend', endResize as any);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
   }
 
   // Compute neighbors for the hovered node with item details
@@ -156,7 +206,23 @@
         {/if}
       </div>
 
-      <aside id="preview-panel" class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-full lg:w-[360px] flex-shrink-0 {panelOpen ? 'block' : 'hidden'}" aria-hidden={!panelOpen}>
+      <!-- Vertical resizer: visible on desktop when panel is open -->
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        class="hidden lg:block w-1 cursor-col-resize self-stretch bg-gray-300 hover:bg-gray-400 transition-colors"
+        aria-hidden={!panelOpen}
+        on:mousedown={startResize}
+        on:touchstart={startResize}
+        title="Drag to resize details panel"
+      ></div>
+
+      <aside
+        id="preview-panel"
+        class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-full lg:w-auto flex-shrink-0 {panelOpen ? 'block' : 'hidden'}"
+        aria-hidden={!panelOpen}
+        style="width: {panelOpen ? panelWidth + 'px' : 'auto'}"
+      >
         <h3 class="font-semibold mb-2">Details</h3>
         {#if currentId && $byId.get(currentId)}
           {@const it = $byId.get(currentId)!}

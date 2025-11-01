@@ -4,9 +4,17 @@ export type Item = {
   id: string;
   title?: string[] | string;
   year?: string;
-  language?: string[];  // etc. keep loose for now
+  language?: string[];
   place_lat?: string | null;
   place_lon?: string | null;
+  type?: string;
+  collection?: string;
+  description?: string[] | string;
+  creator?: string[];
+  concepts?: string[];
+  country?: string;
+  thumbnail?: string;
+  link?: string;
   // ...
 };
 

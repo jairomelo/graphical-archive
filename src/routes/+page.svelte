@@ -61,10 +61,7 @@
 
   function handleNodeHover(id: string | null) {
     hoveredId = id;
-    // Optionally track hover as lightweight view signal
-    if (id) {
-      userInteractions.trackView(id);
-    }
+    // Do NOT track views on hover to avoid layout reshaping while aiming the cursor
   }
 
   // Compute neighbors for the hovered node with item details
@@ -157,6 +154,8 @@
             neighbors={data.neighbors}
             {maxNodes}
             {minScore}
+            userSimilarity={$userSimilarity}
+            userWeight={NEIGHBOR_WEIGHTS.user}
             selectedId={$selectedId}
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}

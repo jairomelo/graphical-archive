@@ -23,7 +23,8 @@
   type GraphLink = {
     source: string | GraphNode;
     target: string | GraphNode;
-    score: number;
+    score: number; // effective (may include user component)
+    baseScore?: number; // original neighbor score (text/date/place only)
     S_text?: number;
     S_date?: number;
     S_place?: number;
@@ -36,6 +37,10 @@
   export let selectedId: string | null = null;
   export let maxNodes: number = 500;
   export let minScore: number = 0.02;
+  // Personalization inputs
+  // Map key format: "idA|idB" with ids sorted lexicographically
+  export let userSimilarity: Map<string, number> = new Map();
+  export let userWeight: number = 0.0; // δ weight for user component in link score
 
   let container: HTMLDivElement;
   let svg: any;
@@ -160,6 +165,7 @@
             source: sourceId,
             target: neighbor.id,
             score: neighbor.score,
+            baseScore: neighbor.score,
             S_text: neighbor.S_text,
             S_date: neighbor.S_date,
             S_place: neighbor.S_place
@@ -195,13 +201,33 @@
       node.degree = degreeMap.get(node.id) || 0;
     });
 
-    links = linkList;
+  links = linkList;
+
+  // Incorporate user component into link scores (non-destructive: preserve baseScore)
+  recomputeLinkScores();
 
     // Detect communities using simple algorithm
     detectCommunities();
 
     // Render the graph
     renderGraph();
+  }
+
+  function pairKey(a: string, b: string): string {
+    return [a, b].sort().join('|');
+  }
+
+  function recomputeLinkScores() {
+    if (!links) return;
+    for (const l of links) {
+      const s = typeof l.source === 'string' ? l.source : l.source.id;
+      const t = typeof l.target === 'string' ? l.target : l.target.id;
+      const base = Number.isFinite(l.baseScore as number) ? (l.baseScore as number) : l.score;
+      const u = userSimilarity?.get(pairKey(s, t)) ?? 0;
+      // Clamp to [0,1] to keep forces stable
+      const eff = Math.max(0, Math.min(1, base + (userWeight || 0) * u));
+      l.score = eff;
+    }
   }
 
   function detectCommunities() {
@@ -395,6 +421,30 @@
 
       node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
     }
+  }
+
+  // When personalization inputs change, update link scores, community colors, styles, and reheating forces
+  $: if (simulation && svg) {
+    // Reference these so Svelte tracks changes
+    const _uw = userWeight;
+    const _us = userSimilarity;
+    // Recompute effective scores
+    recomputeLinkScores();
+    // Re-run community detection with updated weights
+    detectCommunities();
+    // Update node colors
+    svg.select('.nodes').selectAll('circle')
+      .attr('fill', (d: any) => colorScheme[(d.cluster ?? 0) % colorScheme.length]);
+    // Update link visuals
+    svg.select('.links').selectAll('line')
+      .attr('stroke-opacity', (d: any) => 0.2 + d.score * 0.6)
+      .attr('stroke-width', (d: any) => Math.max(0.5, d.score * 3));
+    // Update link force parameters
+    const lf: any = simulation.force('link');
+    if (lf && typeof lf.distance === 'function' && typeof lf.strength === 'function') {
+      lf.distance((d: any) => 100 - d.score * 50).strength((d: any) => d.score);
+    }
+    simulation.alpha(0.6).restart();
   }
 
   // Custom force to cluster nodes by community

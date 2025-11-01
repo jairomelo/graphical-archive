@@ -7,13 +7,12 @@
 
   let showNetworkView = true;
   let networkGraph: any;
-  let maxNodes = 500;
-  let minScore = 0.02;
   let panelOpen = true;
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
   const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
   $: currentId = hoveredId ?? $selectedId ?? null;
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -53,6 +52,8 @@
     if (id === '') {
       selectedId.set(null);
     } else {
+      // Cancel any pending hover timer to avoid double counting
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
       selectedId.set(id);
       // Track view when a node is selected
       userInteractions.trackView(id);
@@ -60,8 +61,16 @@
   }
 
   function handleNodeHover(id: string | null) {
+    // Clear any existing timer when hover target changes or clears
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
     hoveredId = id;
-    // Do NOT track views on hover to avoid layout reshaping while aiming the cursor
+    // Track hover-intent (analytics) after 1s without affecting personalization
+    if (id) {
+      hoverTimer = setTimeout(() => {
+        userInteractions.trackHover(id);
+        hoverTimer = null;
+      }, 3000); // 3s hover-intent
+    }
   }
 
   // Compute neighbors for the hovered node with item details
@@ -105,28 +114,10 @@
   <!-- Network Visualization View -->
   <div class="border rounded-lg bg-white p-4 space-y-3">
     <div class="flex gap-4 items-center flex-wrap">
-      <div>
-        <label class="text-sm font-medium" for="maxNodesRange">Max Nodes:</label>
-        <input id="maxNodesRange" type="range" min="50" max="2000" step="50" bind:value={maxNodes} class="ml-2" />
-        <span class="text-sm ml-2">{maxNodes}</span>
-      </div>
-      
-      <div>
-        <label class="text-sm font-medium" for="minScoreRange">Min Score:</label>
-        <input id="minScoreRange" type="range" min="0" max="0.1" step="0.01" bind:value={minScore} class="ml-2" />
-        <span class="text-sm ml-2">{minScore.toFixed(2)}</span>
-      </div>
-
       <button 
         class="px-3 py-1 bg-gray-600 text-white rounded text-sm"
         on:click={() => networkGraph?.resetZoom()}>
         Reset Zoom
-      </button>
-      
-      <button 
-        class="px-3 py-1 bg-gray-600 text-white rounded text-sm"
-        on:click={() => networkGraph?.reheat()}>
-        Re-simulate
       </button>
 
       <button
@@ -152,8 +143,6 @@
             bind:this={networkGraph}
             items={$items}
             neighbors={data.neighbors}
-            {maxNodes}
-            {minScore}
             userSimilarity={$userSimilarity}
             userWeight={NEIGHBOR_WEIGHTS.user}
             selectedId={$selectedId}
@@ -193,6 +182,10 @@
               on:click={() => userInteractions.toggleBookmark(currentId)}>
               {$userInteractions.bookmarks.has(currentId) ? '★ Bookmarked' : '☆ Bookmark'}
             </button>
+            <!-- Hover analytics (does not affect personalization) -->
+            <div class="text-[11px] text-gray-500 mt-1">
+              Hover views: {($userInteractions.hoverTimestamps?.get(currentId)?.length) || 0}
+            </div>
           </div>
 
           <!-- Neighbor list with similarity breakdown -->

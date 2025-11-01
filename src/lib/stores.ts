@@ -53,21 +53,23 @@ export type UserInteraction = {
   views: Set<string>;
   bookmarks: Set<string>;
   viewTimestamps: Map<string, number[]>; // track when each item was viewed
+  hoverTimestamps?: Map<string, number[]>; // track when hovered (analytics only)
 };
 
 function loadInteractions(): UserInteraction {
-  if (typeof window === 'undefined') return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map() };
+  if (typeof window === 'undefined') return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map(), hoverTimestamps: new Map() };
   try {
     const stored = sessionStorage.getItem('europeana_user_interactions');
-    if (!stored) return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map() };
+    if (!stored) return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map(), hoverTimestamps: new Map() };
     const parsed = JSON.parse(stored);
     return {
       views: new Set(parsed.views || []),
       bookmarks: new Set(parsed.bookmarks || []),
-      viewTimestamps: new Map(parsed.viewTimestamps || [])
+      viewTimestamps: new Map(parsed.viewTimestamps || []),
+      hoverTimestamps: new Map(parsed.hoverTimestamps || [])
     };
   } catch {
-    return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map() };
+    return { views: new Set(), bookmarks: new Set(), viewTimestamps: new Map(), hoverTimestamps: new Map() };
   }
 }
 
@@ -77,7 +79,8 @@ function saveInteractions(data: UserInteraction) {
     sessionStorage.setItem('europeana_user_interactions', JSON.stringify({
       views: Array.from(data.views),
       bookmarks: Array.from(data.bookmarks),
-      viewTimestamps: Array.from(data.viewTimestamps.entries())
+      viewTimestamps: Array.from(data.viewTimestamps.entries()),
+      hoverTimestamps: Array.from((data.hoverTimestamps || new Map()).entries())
     }));
   } catch (e) {
     console.warn('Failed to save interactions:', e);
@@ -97,6 +100,14 @@ function createInteractionStore() {
       saveInteractions(state);
       return state;
     }),
+    trackHover: (id: string) => update(state => {
+      state.hoverTimestamps = state.hoverTimestamps || new Map<string, number[]>();
+      const timestamps = state.hoverTimestamps.get(id) || [];
+      timestamps.push(Date.now());
+      state.hoverTimestamps.set(id, timestamps);
+      saveInteractions(state);
+      return state;
+    }),
     toggleBookmark: (id: string) => update(state => {
       if (state.bookmarks.has(id)) {
         state.bookmarks.delete(id);
@@ -107,7 +118,7 @@ function createInteractionStore() {
       return state;
     }),
     reset: () => update(() => {
-      const fresh = { views: new Set<string>(), bookmarks: new Set<string>(), viewTimestamps: new Map<string, number[]>() };
+      const fresh = { views: new Set<string>(), bookmarks: new Set<string>(), viewTimestamps: new Map<string, number[]>(), hoverTimestamps: new Map<string, number[]>() };
       saveInteractions(fresh);
       return fresh;
     })

@@ -1,5 +1,5 @@
 export const ssr = false;
-export const prerender = false;
+export const prerender = true;
 
 export async function load({ fetch }) {
   const [metaResp, neighResp] = await Promise.all([

@@ -49,7 +49,12 @@
   });
 
   function handleNodeClick(id: string) {
-    selectedId.set(id);
+    // Empty string signals clear selection
+    if (id === '') {
+      selectedId.set(null);
+    } else {
+      selectedId.set(id);
+    }
   }
 
   function handleNodeHover(id: string | null) {

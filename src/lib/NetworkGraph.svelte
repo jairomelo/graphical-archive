@@ -115,6 +115,14 @@
       .attr('viewBox', [0, 0, width, height])
       .attr('style', 'max-width: 100%; height: auto;');
 
+    // Add click handler on SVG background to clear selection
+    svg.on('click', function(this: SVGSVGElement, event: any) {
+      // Only clear if clicking directly on svg (not a node)
+      if (event.target === this || event.target.tagName === 'svg') {
+        onNodeClick(''); // empty string signals clear selection
+      }
+    });
+
     // Add zoom behavior
     zoom = d3.zoom()
       .scaleExtent([0.1, 10])

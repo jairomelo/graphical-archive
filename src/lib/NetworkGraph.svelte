@@ -100,8 +100,10 @@
     updateGraph();
   }
 
-  $: if (svg && selectedId) {
-    highlightSelection();
+  // Re-apply highlight state whenever selection changes (also clear when no selection)
+  $: if (svg) {
+    if (selectedId) highlightSelection();
+    else clearHighlight();
   }
 
   function initializeGraph() {
@@ -454,16 +456,47 @@
   function highlightSelection() {
     if (!svg || !selectedId) return;
 
+    // Build neighbor set of the selected node
+    const neighborSet = new Set<string>();
+    neighborSet.add(selectedId);
+    links.forEach((l: any) => {
+      const s = typeof l.source === 'string' ? l.source : l.source.id;
+      const t = typeof l.target === 'string' ? l.target : l.target.id;
+      if (s === selectedId) neighborSet.add(t);
+      if (t === selectedId) neighborSet.add(s);
+    });
+
+    // Node visuals: emphasize selected and its neighbors, dim others
+    svg.select('.nodes').selectAll('g')
+      .attr('opacity', (d: any) => neighborSet.has(d.id) ? 1 : 0.15);
+
     svg.select('.nodes').selectAll('circle')
       .attr('stroke', (d: any) => d.id === selectedId ? '#ff0000' : '#fff')
       .attr('stroke-width', (d: any) => d.id === selectedId ? 3 : 1.5);
 
-    // Highlight connected links
+    // Links: highlight those incident to the selected node, dim the rest
     svg.select('.links').selectAll('line')
-      .attr('stroke', (d: any) => 
-        d.source.id === selectedId || d.target.id === selectedId ? '#ff6b6b' : '#999')
-      .attr('stroke-opacity', (d: any) => 
-        d.source.id === selectedId || d.target.id === selectedId ? 0.8 : 0.2 + d.score * 0.6);
+      .attr('stroke', (d: any) => (
+        d.source.id === selectedId || d.target.id === selectedId ? '#ff6b6b' : '#999'
+      ))
+      .attr('stroke-opacity', (d: any) => (
+        d.source.id === selectedId || d.target.id === selectedId ? 0.9 : 0.08
+      ));
+  }
+
+  function clearHighlight() {
+    if (!svg) return;
+
+    // Reset node opacity and stroke
+    svg.select('.nodes').selectAll('g').attr('opacity', 1);
+    svg.select('.nodes').selectAll('circle')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5);
+
+    // Reset links to base styling derived from score
+    svg.select('.links').selectAll('line')
+      .attr('stroke', '#999')
+      .attr('stroke-opacity', (d: any) => 0.2 + d.score * 0.6);
   }
 
   export function resetZoom() {

@@ -262,9 +262,15 @@
 
       <ul class="border rounded divide-y max-h-[50vh] overflow-auto">
         {#each filtered.slice(0, 200) as it}
-          <li class="p-2 hover:bg-gray-50 cursor-pointer" on:click={() => selectedId.set(it.id)}>
-            <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
-            <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
+          <li class="p-0">
+            <button
+              type="button"
+              class="w-full text-left p-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              on:click={() => selectedId.set(it.id)}
+            >
+              <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
+              <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
+            </button>
           </li>
         {/each}
       </ul>

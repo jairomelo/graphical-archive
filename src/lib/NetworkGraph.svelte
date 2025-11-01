@@ -32,6 +32,7 @@
   export let items: Item[] = [];
   export let neighbors: Record<string, any[]> = {};
   export let onNodeClick: (id: string) => void = () => {};
+  export let onNodeHover: (id: string | null) => void = () => {};
   export let selectedId: string | null = null;
   export let maxNodes: number = 500;
   export let minScore: number = 0.02;
@@ -48,20 +49,52 @@
   // Visualization settings
   let colorScheme = d3.schemeTableau10;
   let width = 1200;
-  let height = 800;
+  let height = 700;
   
   // Zoom behavior
   let zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
 
+  function updateSize() {
+    if (!container || !svg) return;
+    const rect = container.getBoundingClientRect();
+    width = Math.max(320, Math.floor(rect.width));
+    // keep height stable but ensure at least 400
+    height = Math.max(400, height);
+    svg
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', [0, 0, width, height]);
+  }
+
+  function handleResize() {
+    updateSize();
+    if (simulation) {
+      simulation
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .alpha(0.2)
+        .restart();
+    }
+  }
+
+  let stopResize: (() => void) | null = null;
+
   onMount(() => {
     initializeGraph();
-  });
-
-  onDestroy(() => {
-    if (simulation) {
-      simulation.stop();
+    updateSize();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      stopResize = () => window.removeEventListener('resize', handleResize);
     }
   });
+
+  if (typeof window !== 'undefined') {
+    onDestroy(() => {
+      if (simulation) {
+        simulation.stop();
+      }
+      if (stopResize) stopResize();
+    });
+  }
 
   $: if (container && items.length > 0 && neighbors) {
     updateGraph();
@@ -142,8 +175,10 @@
     // Calculate degree for each node
     const degreeMap = new Map<string, number>();
     linkList.forEach(link => {
-      degreeMap.set(link.source, (degreeMap.get(link.source) || 0) + 1);
-      degreeMap.set(link.target, (degreeMap.get(link.target) || 0) + 1);
+      const s = typeof link.source === 'string' ? link.source : link.source.id;
+      const t = typeof link.target === 'string' ? link.target : link.target.id;
+      degreeMap.set(s, (degreeMap.get(s) || 0) + 1);
+      degreeMap.set(t, (degreeMap.get(t) || 0) + 1);
     });
     
     nodes.forEach(node => {
@@ -282,6 +317,7 @@
       })
       .on('mouseover', function(this: SVGCircleElement, event: any, d: GraphNode) {
         d3.select(this).attr('stroke', '#000').attr('stroke-width', 2);
+        try { onNodeHover(d.id); } catch {}
         
         // Show tooltip
         const tooltip = g.append('g')
@@ -312,6 +348,7 @@
       .on('mouseout', function(this: SVGCircleElement) {
         d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1.5);
         g.selectAll('.tooltip').remove();
+        try { onNodeHover(null); } catch {}
       });
 
     // Add labels for high-degree nodes

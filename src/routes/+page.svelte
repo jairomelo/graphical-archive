@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { items, edges, selectedId, neighborsOfSelected, filters, byId } from '$lib/stores';
-  // @ts-ignore
-  import * as d3 from 'd3';
   import NetworkGraph from '$lib/NetworkGraph.svelte';
+  import { browser } from '$app/environment';
   export let data;
 
   let showNetworkView = true;
   let networkGraph: any;
   let maxNodes = 500;
   let minScore = 0.02;
+  let hoveredId: string | null = null;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -42,6 +42,10 @@
 
   function handleNodeClick(id: string) {
     selectedId.set(id);
+  }
+
+  function handleNodeHover(id: string | null) {
+    hoveredId = id;
   }
 
 </script>
@@ -93,28 +97,68 @@
       </button>
     </div>
 
-    <NetworkGraph 
-      bind:this={networkGraph}
-      items={$items}
-      neighbors={data.neighbors}
-      {maxNodes}
-      {minScore}
-      selectedId={$selectedId}
-      onNodeClick={handleNodeClick}
-    />
-
-    {#if $selectedId && $byId.get($selectedId)}
-      {@const item = $byId.get($selectedId)!}
-      {@const title = Array.isArray(item.title) ? item.title[0] : item.title}
-      <div class="border-t pt-3">
-        <h3 class="font-semibold">Selected Item:</h3>
-        <p class="text-sm">{title ?? '(no title)'}</p>
-        <p class="text-xs text-gray-600">{item.year ?? ''} · {(item.language && item.language.join(', ')) || ''}</p>
-        {#if item.link}
-          <a href={item.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
+    <div class="flex gap-4 items-start">
+      <div class="flex-1 min-w-0">
+        {#if browser}
+          <NetworkGraph 
+            bind:this={networkGraph}
+            items={$items}
+            neighbors={data.neighbors}
+            {maxNodes}
+            {minScore}
+            selectedId={$selectedId}
+            onNodeClick={handleNodeClick}
+            onNodeHover={handleNodeHover}
+          />
+        {:else}
+          <div class="h-[600px] flex items-center justify-center text-gray-500">
+            Loading client view…
+          </div>
         {/if}
       </div>
-    {/if}
+
+  <aside class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-[360px] flex-shrink-0">
+        <h3 class="font-semibold mb-2">Preview</h3>
+        {#if hoveredId && $byId.get(hoveredId)}
+          {@const h = $byId.get(hoveredId)!}
+          {@const title = Array.isArray(h.title) ? h.title[0] : h.title}
+          {#if h.thumbnail}
+            <img src={h.thumbnail} alt={title || 'thumbnail'} class="w-full h-auto rounded mb-2" />
+          {/if}
+          <div class="space-y-1">
+            <div class="font-medium">{title ?? '(no title)'}</div>
+            <div class="text-xs text-gray-600">{h.year ?? ''} · {(h.language && h.language.join(', ')) || ''}</div>
+            {#if h.country}
+              <div class="text-xs">Country: {h.country}</div>
+            {/if}
+            {#if h.collection}
+              <div class="text-xs">Collection: {h.collection}</div>
+            {/if}
+            {#if h.place_label}
+              <div class="text-xs">Place: {Array.isArray(h.place_label) ? h.place_label.join(', ') : h.place_label}</div>
+            {/if}
+            {#if h.link}
+              <a href={h.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
+            {/if}
+          </div>
+        {:else}
+          <p class="text-sm text-gray-600">Hover a node to preview its image and metadata.</p>
+        {/if}
+
+        {#if $selectedId && $byId.get($selectedId)}
+          {@const s = $byId.get($selectedId)!}
+          {@const stitle = Array.isArray(s.title) ? s.title[0] : s.title}
+          <div class="mt-4 border-t pt-3">
+            <h4 class="font-semibold">Selected</h4>
+            <div class="text-sm">{stitle ?? '(no title)'}</div>
+            <div class="text-xs text-gray-600">{s.year ?? ''} · {(s.language && s.language.join(', ')) || ''}</div>
+            {#if s.link}
+              <a href={s.link} target="_blank" class="text-blue-600 text-sm hover:underline">Open</a>
+            {/if}
+          </div>
+        {/if}
+      </aside>
+    </div>
   </div>
 
 {:else}

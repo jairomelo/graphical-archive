@@ -160,52 +160,91 @@
   }
 
   function detectCommunities() {
-    // Simple community detection based on connectivity
-    // Group nodes that share many neighbors
-    const visited = new Set<string>();
-    let clusterId = 0;
-    
-    // Build adjacency map
-    const adjacency = new Map<string, Set<string>>();
+    // Community detection using Weighted Label Propagation Algorithm (LPA)
+
+    // 1) Build weighted adjacency map from current links
+    const adjacency = new Map<string, Map<string, number>>();
     links.forEach(link => {
-      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-      if (!adjacency.has(sourceId)) adjacency.set(sourceId, new Set());
-      if (!adjacency.has(targetId)) adjacency.set(targetId, new Set());
-      adjacency.get(sourceId)!.add(targetId);
-      adjacency.get(targetId)!.add(sourceId);
+      const s = typeof link.source === 'string' ? link.source : link.source.id;
+      const t = typeof link.target === 'string' ? link.target : link.target.id;
+      const w = Number.isFinite(link.score) ? link.score : 1;
+      if (!adjacency.has(s)) adjacency.set(s, new Map());
+      if (!adjacency.has(t)) adjacency.set(t, new Map());
+      adjacency.get(s)!.set(t, (adjacency.get(s)!.get(t) || 0) + w);
+      adjacency.get(t)!.set(s, (adjacency.get(t)!.get(s) || 0) + w);
     });
 
-    // BFS to find connected components
-    nodes.forEach(node => {
-      if (visited.has(node.id)) return;
-      
-      const queue = [node.id];
-      visited.add(node.id);
-      clusters.set(node.id, clusterId);
-      
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        const neighbors = adjacency.get(current);
-        
-        if (neighbors) {
-          neighbors.forEach(neighbor => {
-            if (!visited.has(neighbor)) {
-              visited.add(neighbor);
-              clusters.set(neighbor, clusterId);
-              queue.push(neighbor);
-            }
-          });
-        }
-      }
-      
-      clusterId++;
-    });
+    // 2) Run label propagation
+    const labels = labelPropagation(adjacency, 40);
 
-    // Assign cluster to nodes
+    // 3) Map arbitrary labels to compact cluster indices 0..k-1
+    clusters.clear();
+    const labelToCluster = new Map<string, number>();
+    let nextCluster = 0;
+    for (const n of nodes) {
+      const lab = labels.get(n.id) || n.id;
+      if (!labelToCluster.has(lab)) labelToCluster.set(lab, nextCluster++);
+      clusters.set(n.id, labelToCluster.get(lab)!);
+    }
+
+    // 4) Assign cluster to nodes
     nodes.forEach(node => {
       node.cluster = clusters.get(node.id) || 0;
     });
+  }
+
+  // Weighted Label Propagation Algorithm (Raghavan et al., 2007)
+  function labelPropagation(
+    adjacency: Map<string, Map<string, number>>,
+    maxIter: number = 30
+  ): Map<string, string> {
+    const labels = new Map<string, string>();
+    const nodeIds = nodes.map(n => n.id);
+
+    // init label of each node to itself
+    for (const id of nodeIds) labels.set(id, id);
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      let changes = 0;
+
+      // randomize processing order to avoid bias
+      const order = nodeIds.slice();
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+
+      for (const u of order) {
+        const neigh = adjacency.get(u);
+        if (!neigh || neigh.size === 0) continue;
+
+        // accumulate weight by neighbor labels
+        const weightByLabel = new Map<string, number>();
+        neigh.forEach((w, v) => {
+          const lab = labels.get(v) || v;
+          weightByLabel.set(lab, (weightByLabel.get(lab) || 0) + w);
+        });
+
+        // select label with maximal total weight (tie-break by stable string order)
+        let bestLabel = labels.get(u) || u;
+        let bestScore = -Infinity;
+        weightByLabel.forEach((sum, lab) => {
+          if (sum > bestScore || (sum === bestScore && lab < bestLabel)) {
+            bestScore = sum;
+            bestLabel = lab;
+          }
+        });
+
+        if (bestLabel !== labels.get(u)) {
+          labels.set(u, bestLabel);
+          changes++;
+        }
+      }
+
+      if (changes === 0) break; // converged
+    }
+
+    return labels;
   }
 
   function renderGraph() {

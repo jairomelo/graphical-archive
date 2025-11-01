@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { items, edges, selectedId, neighborsOfSelected, filters, byId } from '$lib/stores';
+  import { items, edges, selectedId, neighborsOfSelected, filters, byId, userInteractions, userSimilarity } from '$lib/stores';
   import NetworkGraph from '$lib/NetworkGraph.svelte';
   import { browser } from '$app/environment';
   export let data;
@@ -12,7 +12,7 @@
   let panelOpen = true;
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
-  const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2 };
+  const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
   $: currentId = hoveredId ?? $selectedId ?? null;
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
@@ -54,11 +54,17 @@
       selectedId.set(null);
     } else {
       selectedId.set(id);
+      // Track view when a node is selected
+      userInteractions.trackView(id);
     }
   }
 
   function handleNodeHover(id: string | null) {
     hoveredId = id;
+    // Optionally track hover as lightweight view signal
+    if (id) {
+      userInteractions.trackView(id);
+    }
   }
 
   // Compute neighbors for the hovered node with item details
@@ -133,6 +139,13 @@
         on:click={() => (panelOpen = !panelOpen)}>
         {panelOpen ? 'Hide panel' : 'Show panel'}
       </button>
+
+      <button
+        class="px-3 py-1 rounded text-sm border bg-red-50 hover:bg-red-100 text-red-700"
+        title="Reset interaction history"
+        on:click={() => { if(confirm('Clear all tracked views and bookmarks?')) userInteractions.reset(); }}>
+        Reset Interactions
+      </button>
     </div>
 
     <div class="flex flex-col lg:flex-row gap-4 items-start">
@@ -175,6 +188,12 @@
             {#if it.link}
               <a href={it.link} target="_blank" class="text-blue-600 text-sm hover:underline">View on Europeana</a>
             {/if}
+            <!-- Bookmark toggle -->
+            <button 
+              class="mt-2 px-2 py-1 text-xs rounded {$userInteractions.bookmarks.has(currentId) ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-700 border border-gray-300'}"
+              on:click={() => userInteractions.toggleBookmark(currentId)}>
+              {$userInteractions.bookmarks.has(currentId) ? '★ Bookmarked' : '☆ Bookmark'}
+            </button>
           </div>
 
           <!-- Neighbor list with similarity breakdown -->
@@ -182,23 +201,29 @@
             <div class="mt-4 border-t pt-3">
               <div class="flex items-center justify-between mb-2">
                 <h4 class="font-semibold">Top neighbors</h4>
-                <span class="text-[10px] text-gray-500">score = {NEIGHBOR_WEIGHTS.text}·Text + {NEIGHBOR_WEIGHTS.date}·Date + {NEIGHBOR_WEIGHTS.place}·Place</span>
+                <span class="text-[10px] text-gray-500">G = {NEIGHBOR_WEIGHTS.text}·Text + {NEIGHBOR_WEIGHTS.date}·Date + {NEIGHBOR_WEIGHTS.place}·Place + {NEIGHBOR_WEIGHTS.user}·User</span>
               </div>
               <ul class="divide-y">
                 {#each hoveredNeighbors as n}
                   {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
+                  {@const userScore = $userSimilarity.get([currentId, n.id].sort().join('|')) ?? 0}
+                  {@const adjustedScore = (n.score ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
                   <li class="py-2">
                     <div class="flex items-start justify-between gap-2">
                       <button class="text-left text-sm hover:underline" on:click={() => { selectedId.set(n.id); hoveredId = null; }}>
                         {t ?? n.title ?? n.id}
                       </button>
-                      <span class="text-xs text-gray-600 whitespace-nowrap">{(n.score ?? 0).toFixed(2)}</span>
+                      <span class="text-xs text-gray-600 whitespace-nowrap">
+                        {adjustedScore.toFixed(2)}
+                        {#if userScore > 0}<span class="text-purple-600 ml-1" title="User interaction boost">↑</span>{/if}
+                      </span>
                     </div>
                     <div class="mt-1">
-                      <div class="flex items-center gap-2 text-[11px] text-gray-600">
+                      <div class="flex items-center gap-2 text-[11px] text-gray-600 flex-wrap">
                         <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>Text {Number(n.S_text ?? 0).toFixed(2)}</span>
                         <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>Date {Number(n.S_date ?? 0).toFixed(2)}</span>
                         <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>Place {Number(n.S_place ?? 0).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1 {userScore > 0 ? 'text-purple-600 font-medium' : ''}"><span class="inline-block w-2 h-2 bg-purple-500 rounded"></span>User {userScore.toFixed(2)}</span>
                       </div>
                       
                     </div>

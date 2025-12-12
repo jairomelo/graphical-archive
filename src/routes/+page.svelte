@@ -21,6 +21,17 @@
   let resizeStartX = 0;
   let resizeStartWidth = 0;
 
+  // Accordion state management
+  let detailsRefs: HTMLDetailsElement[] = [];
+  let allExpanded = false;
+
+  function toggleAllDetails() {
+    allExpanded = !allExpanded;
+    detailsRefs.forEach(details => {
+      if (details) details.open = allExpanded;
+    });
+  }
+
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
     if (Array.isArray(n)) return n; // already [{source,target,score}]
@@ -166,6 +177,17 @@
       </button>
     </div>
   </div>
+  <div class="border-t pt-4">
+  <p class="text-md text-gray-600 mb-3">
+    This visualization sketches what we are calling the "graphical topology" of the archive: 
+    a space where items relate to one another through textual metadata, dates, places, and 
+    patterns of interaction. It is not a working archival platform but a conceptual model 
+    meant to explore how archives might be navigated through relational proximity rather 
+    than fixed hierarchies or linear search.
+  </p>
+
+</div>
+
 
 {#if showNetworkView}
   <!-- Network Visualization View -->
@@ -377,8 +399,227 @@
     </section>
   </div>
 {/if}
+
+{#if showNetworkView}
+<!-- About Section: Timeline/Stepped Layout -->
+<div class="mt-12 border-t-2 pt-8 bg-gradient-to-b from-gray-50 to-white">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-gray-800 mb-2">Understanding the Visualization</h2>
+      <p class="text-gray-600">Follow the journey from concept to interaction</p>
+    </div>
+
+    <!-- Timeline Container -->
+    <div class="relative">
+      <!-- Vertical connecting line (hidden on mobile, visible on larger screens) -->
+      <div class="hidden md:block absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-green-400 via-purple-400 to-amber-400"></div>
+
+      <!-- Step 1: What -->
+      <div class="relative mb-8 md:mb-12">
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          <!-- Number badge -->
+          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
+            <span class="text-2xl">👁️</span>
+          </div>
+          
+          <!-- Content card -->
+          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-blue-400">
+            <details bind:this={detailsRefs[0]} open class="group">
+              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
+                <div>
+                  <div class="flex items-center gap-3 mb-1">
+                    <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Step 1</span>
+                    <span class="text-gray-400">→</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-800">What are you seeing here?</h3>
+                  <p class="text-sm text-gray-500 mt-1">Discover the topology of connections</p>
+                </div>
+                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
+              </summary>
+              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
+                <p>
+                  Each node is an abstract representation of an archival item (digital object + digital 
+                  artifact). Edges indicate similarity based on metadata such as titles, dates, places, 
+                  or themes. Clusters emerge where items share multiple attributes, forming 
+                  "neighborhoods" of related material.
+                </p>
+                <p>
+                  These neighborhoods shift as you interact with the archive: items you view, bookmark, 
+                  or hover over influence the layout, bringing similar nodes closer to your focus. 
+                  This simulates a personalized exploration of the archive—one in which your interests 
+                  and questions shape the connections you see, surfacing related items that might remain 
+                  hidden in traditional search or browsing workflows.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: How -->
+      <div class="relative mb-8 md:mb-12">
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
+            <span class="text-2xl">🤔</span>
+          </div>
+          
+          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-green-400">
+            <details bind:this={detailsRefs[1]} class="group">
+              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
+                <div>
+                  <div class="flex items-center gap-3 mb-1">
+                    <span class="text-xs font-semibold text-green-600 uppercase tracking-wider">Step 2</span>
+                    <span class="text-gray-400">→</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-800">How to use it?</h3>
+                  <p class="text-sm text-gray-500 mt-1">Navigate and interact with the archive</p>
+                </div>
+                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
+              </summary>
+              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
+                <p>
+                  In Network View, hover over nodes to preview item details in the side panel; click a 
+                  node to pin it there. Use the search and filter panel to locate specific items or narrow 
+                  the view. The graph adjusts dynamically based on your interactions, highlighting items 
+                  similar to those you engage with.
+                </p>
+                <p>
+                  From the details panel, you can bookmark items for later reference; these bookmarks 
+                  also influence the layout, bringing related materials closer to your attention. You can 
+                  explore each item's "top neighbors," with similarity scores broken down by attribute 
+                  type. The more you interact, the more the graph adapts to your evolving interests.
+                </p>
+                <p class="text-sm italic text-gray-500">
+                  💡 Tip: You can reset your interaction history at any time to start fresh.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Privacy -->
+      <div class="relative mb-8 md:mb-12">
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
+            <span class="text-2xl">📊</span>
+          </div>
+          
+          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-purple-400">
+            <details bind:this={detailsRefs[2]} class="group">
+              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
+                <div>
+                  <div class="flex items-center gap-3 mb-1">
+                    <span class="text-xs font-semibold text-purple-600 uppercase tracking-wider">Step 3</span>
+                    <span class="text-gray-400">→</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-800">What about my data?</h3>
+                  <p class="text-sm text-gray-500 mt-1">Your privacy and data security</p>
+                </div>
+                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
+              </summary>
+              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
+                <p>
+                  Your interactions (views, hovers, bookmarks) are stored locally in your browser and 
+                  are never transmitted to any server. This keeps your exploration private and 
+                  personalized without external tracking.
+                </p>
+                <p>
+                  It also means your history will disappear if you clear your browser data or switch 
+                  devices. This is a conceptual demo meant to prototype new modes of archival navigation, 
+                  not a production platform.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Why -->
+      <div class="relative">
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
+            <span class="text-2xl">✳</span>
+          </div>
+          
+          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-amber-400">
+            <details bind:this={detailsRefs[3]} class="group">
+              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
+                <div>
+                  <div class="flex items-center gap-3 mb-1">
+                    <span class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Step 4</span>
+                    <span class="text-gray-400">🕸️</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-800">Why this visualization?</h3>
+                  <p class="text-sm text-gray-500 mt-1">The conceptual foundation</p>
+                </div>
+                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
+              </summary>
+              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
+                <p>
+                  Digital concepts are hard to grasp narratively. Technical jargon and algorithmic 
+                  formulas often obscure more than they clarify, and recommendation systems can feel 
+                  like black boxes even to their creators.
+                </p>
+                <p>
+                  By visualizing the relational topology of an archive, and allowing users to see how 
+                  their interactions reshape that topology, this project aims to demystify how digital 
+                  archives suggest, relate, and connect items. The visualization invites reflection on 
+                  how meaning is constructed through adjacency and traversal, challenging traditional 
+                  notions of archival organization and navigation.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expand All Toggle -->
+    <div class="flex justify-center mt-8">
+      <button
+        on:click={toggleAllDetails}
+        class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+      >
+        {allExpanded ? '▲ Collapse All Steps' : '▼ Expand All Steps'}
+      </button>
+    </div>
+  </div>
+</div>
+{/if}
 </div>
 
 <style>
   .grid { display: grid; }
+  
+  /* Fade-in animation for accordion content */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  /* Smooth details marker animation */
+  details summary::-webkit-details-marker {
+    display: none;
+  }
+  
+  details summary::marker {
+    display: none;
+  }
+  
+  /* Enhanced hover effects */
+  details:hover {
+    transform: translateY(-2px);
+  }
 </style>
+

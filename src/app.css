@@ -1,1 +1,8 @@
 @import 'tailwindcss';
+
+.navbar-logo {
+  margin-right: 8px;
+  height: 2rem;
+  display: inline;
+  padding-left: 1rem;
+}

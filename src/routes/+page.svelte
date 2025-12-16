@@ -159,8 +159,6 @@
 
   $: hoveredNeighbors = getNeighborsFor(currentId, 10);
 
-
-
 </script>
 
 <div class="p-4 space-y-4">
@@ -592,38 +590,3 @@
 </div>
 {/if}
 </div>
-
-<style>
-  .grid { display: grid; }
-  
-  /* Fade-in animation for accordion content */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  
-  /* Smooth details marker animation */
-  details summary::-webkit-details-marker {
-    display: none;
-  }
-  
-  details summary::marker {
-    display: none;
-  }
-  
-  /* Enhanced hover effects */
-  details:hover {
-    transform: translateY(-2px);
-  }
-</style>
-

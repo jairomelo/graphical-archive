@@ -573,9 +573,3 @@
 </script>
 
 <div bind:this={container} class="network-container w-full h-full bg-gray-50 rounded-lg border border-gray-200"></div>
-
-<style>
-  .network-container {
-    min-height: 600px;
-  }
-</style>

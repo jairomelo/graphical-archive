@@ -172,38 +172,45 @@
 <!-- Network Visualization View -->
 <div class="border rounded-lg bg-white p-4 space-y-3">
     <!-- Network Size Control -->
-    <div class="border rounded-lg bg-gray-50 p-4">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-semibold text-gray-700">Network Size</h3>
-        <span class="font-mono text-sm font-semibold text-gray-600">{maxNodes} nodes</span>
+    <details class="border rounded-lg bg-gray-50" open>
+      <summary class="cursor-pointer p-4 select-none font-semibold text-gray-700 text-sm hover:bg-gray-100 rounded-lg">
+        <span class="inline-flex items-center justify-between w-full">
+          <span>Network Size</span>
+          <span class="font-mono font-semibold text-gray-600">{maxNodes} nodes</span>
+        </span>
+      </summary>
+      <div class="px-4 pb-4 space-y-2">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-600">10</span>
+          <input 
+            type="range" 
+            min="10" 
+            max={$items.length} 
+            step="10" 
+            bind:value={maxNodes}
+            class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+          <span class="text-xs text-gray-600">{$items.length}</span>
+        </div>
+        <p class="text-[10px] text-gray-500">Control the number of nodes displayed in the visualization. Smaller networks load faster and are easier to explore.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <span class="text-xs text-gray-600">10</span>
-        <input 
-          type="range" 
-          min="10" 
-          max={$items.length} 
-          step="10" 
-          bind:value={maxNodes}
-          class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-        />
-        <span class="text-xs text-gray-600">{$items.length}</span>
-      </div>
-      <p class="text-[10px] text-gray-500 mt-2">Control the number of nodes displayed in the visualization. Smaller networks load faster and are easier to explore.</p>
-    </div>
+    </details>
 
     <!-- Weight Sliders -->
-    <div class="border rounded-lg bg-gray-50 p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold text-gray-700">Similarity Weights</h3>
-        <button
-          class="px-3 py-1 text-xs rounded border bg-white hover:bg-gray-100 text-gray-700"
-          on:click={() => { NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 }; }}
-          title="Reset weights to default values">
-          Reset Weights
-        </button>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <details class="border rounded-lg bg-gray-50" open>
+      <summary class="cursor-pointer p-4 select-none hover:bg-gray-100 rounded-lg">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700">Similarity Weights</h3>
+          <button
+            class="px-3 py-1 text-xs rounded border bg-white hover:bg-gray-100 text-gray-700"
+            on:click|stopPropagation={() => { NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 }; }}
+            title="Reset weights to default values">
+            Reset Weights
+          </button>
+        </div>
+      </summary>
+      <div class="px-4 pb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Text Weight -->
         <div class="space-y-1">
           <label class="flex items-center justify-between text-xs text-gray-600">
@@ -280,8 +287,9 @@
           />
         </div>
       </div>
-      <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
-    </div>
+        <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
+      </div>
+    </details>
 
     <!-- Control Buttons -->
     <div class="flex gap-4 items-center flex-wrap">

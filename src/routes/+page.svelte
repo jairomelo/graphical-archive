@@ -36,6 +36,8 @@
   onMount(() => {
     items.set(data.metadata || []);
     edges.set(normalizeNeighbors(data.neighbors));
+    // Set maxNodes to full dataset size by default
+    maxNodes = data.metadata?.length || 500;
     if (typeof window !== 'undefined') {
       // Open panel by default on large screens, collapse on small
       panelOpen = window.innerWidth >= 1024; // lg breakpoint
@@ -169,29 +171,6 @@
 
 <!-- Network Visualization View -->
 <div class="border rounded-lg bg-white p-4 space-y-3">
-    <div class="flex gap-4 items-center flex-wrap">
-      <button 
-        class="px-3 py-1 bg-gray-600 text-white rounded text-sm"
-        on:click={() => networkGraph?.resetZoom()}>
-        Reset Zoom
-      </button>
-
-      <button
-        class="ml-auto px-3 py-1 rounded text-sm border bg-gray-100 hover:bg-gray-200"
-        aria-controls="preview-panel"
-        aria-expanded={panelOpen}
-        on:click={() => (panelOpen = !panelOpen)}>
-        {panelOpen ? 'Hide panel' : 'Show panel'}
-      </button>
-
-      <button
-        class="px-3 py-1 rounded text-sm border bg-red-50 hover:bg-red-100 text-red-700"
-        title="Reset interaction history"
-        on:click={() => { if(confirm('Clear all tracked views and bookmarks?')) userInteractions.reset(); }}>
-        Reset Interactions
-      </button>
-    </div>
-
     <!-- Network Size Control -->
     <div class="border rounded-lg bg-gray-50 p-4">
       <div class="flex items-center justify-between mb-2">
@@ -302,6 +281,30 @@
         </div>
       </div>
       <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="flex gap-4 items-center flex-wrap">
+      <button 
+        class="px-3 py-1 bg-gray-600 text-white rounded text-sm"
+        on:click={() => networkGraph?.resetZoom()}>
+        Reset Zoom
+      </button>
+
+      <button
+        class="ml-auto px-3 py-1 rounded text-sm border bg-gray-100 hover:bg-gray-200"
+        aria-controls="preview-panel"
+        aria-expanded={panelOpen}
+        on:click={() => (panelOpen = !panelOpen)}>
+        {panelOpen ? 'Hide panel' : 'Show panel'}
+      </button>
+
+      <button
+        class="px-3 py-1 rounded text-sm border bg-red-50 hover:bg-red-100 text-red-700"
+        title="Reset interaction history"
+        on:click={() => { if(confirm('Clear all tracked views and bookmarks?')) userInteractions.reset(); }}>
+        Reset Interactions
+      </button>
     </div>
 
     <div class="flex flex-col lg:flex-row gap-4 items-start">

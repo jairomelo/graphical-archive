@@ -108,6 +108,11 @@
     updateGraph();
   }
 
+  // Rebuild graph when maxNodes changes
+  $: if (svg && maxNodes) {
+    updateGraph();
+  }
+
   // Re-apply highlight state whenever selection changes (also clear when no selection)
   $: if (svg) {
     if (selectedId) highlightSelection();

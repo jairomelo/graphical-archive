@@ -13,6 +13,7 @@
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
   let NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
+  let maxNodes = 500;
   $: currentId = hoveredId ?? $selectedId ?? null;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
   // Resizable panel state (desktop)
@@ -217,6 +218,27 @@
       </button>
     </div>
 
+    <!-- Network Size Control -->
+    <div class="border rounded-lg bg-gray-50 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-gray-700">Network Size</h3>
+        <span class="font-mono text-sm font-semibold text-gray-600">{maxNodes} nodes</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-600">10</span>
+        <input 
+          type="range" 
+          min="10" 
+          max={$items.length} 
+          step="10" 
+          bind:value={maxNodes}
+          class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+        />
+        <span class="text-xs text-gray-600">{$items.length}</span>
+      </div>
+      <p class="text-[10px] text-gray-500 mt-2">Control the number of nodes displayed in the visualization. Smaller networks load faster and are easier to explore.</p>
+    </div>
+
     <!-- Weight Sliders -->
     <div class="border rounded-lg bg-gray-50 p-4">
       <div class="flex items-center justify-between mb-3">
@@ -320,6 +342,7 @@
             dateWeight={NEIGHBOR_WEIGHTS.date}
             placeWeight={NEIGHBOR_WEIGHTS.place}
             userWeight={NEIGHBOR_WEIGHTS.user}
+            maxNodes={maxNodes}
             selectedId={$selectedId}
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}

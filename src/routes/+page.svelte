@@ -5,12 +5,14 @@
   import { browser } from '$app/environment';
   export let data;
 
-  let showNetworkView = true;
+  import favicon from '$lib/assets/favicon.svg';
+
   let networkGraph: any;
   let panelOpen = true;
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
-  const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
+  let NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
+  let maxNodes = 500;
   $: currentId = hoveredId ?? $selectedId ?? null;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
   // Resizable panel state (desktop)
@@ -20,17 +22,6 @@
   let isResizing = false;
   let resizeStartX = 0;
   let resizeStartWidth = 0;
-
-  // Accordion state management
-  let detailsRefs: HTMLDetailsElement[] = [];
-  let allExpanded = false;
-
-  function toggleAllDetails() {
-    allExpanded = !allExpanded;
-    detailsRefs.forEach(details => {
-      if (details) details.open = allExpanded;
-    });
-  }
 
   // Expect neighbors JSON as either edge list or {pairs:[{a,b,score}], ...}
   function normalizeNeighbors(n: any) {
@@ -45,6 +36,8 @@
   onMount(() => {
     items.set(data.metadata || []);
     edges.set(normalizeNeighbors(data.neighbors));
+    // Set maxNodes to full dataset size by default
+    maxNodes = data.metadata?.length || 500;
     if (typeof window !== 'undefined') {
       // Open panel by default on large screens, collapse on small
       panelOpen = window.innerWidth >= 1024; // lg breakpoint
@@ -161,21 +154,8 @@
 
 <div class="p-4 space-y-4">
   <div class="flex justify-between items-center">
-    <h1 class="text-2xl font-bold">Graphical Archive</h1>
+    <h1 class="text-2xl font-bold" style="display: inline-block;"><img src={favicon} alt="Graphical Archive logo" class="navbar-logo"> Graphical Archive</h1>
     <h2 class="text-sm text-gray-600">A Conceptual Visualization of the Graphical Topology of the Archive</h2>
-    
-    <div class="flex gap-2">
-      <button 
-        class="px-4 py-2 rounded {showNetworkView ? 'bg-blue-600 text-white' : 'bg-gray-200'}"
-        on:click={() => showNetworkView = true}>
-        Network View
-      </button>
-      <button 
-        class="px-4 py-2 rounded {!showNetworkView ? 'bg-blue-600 text-white' : 'bg-gray-200'}"
-        on:click={() => showNetworkView = false}>
-        List View
-      </button>
-    </div>
   </div>
   <div class="border-t pt-4">
   <p class="text-md text-gray-600 mb-3">
@@ -189,9 +169,129 @@
 </div>
 
 
-{#if showNetworkView}
-  <!-- Network Visualization View -->
-  <div class="border rounded-lg bg-white p-4 space-y-3">
+<!-- Network Visualization View -->
+<div class="border rounded-lg bg-white p-4 space-y-3">
+    <!-- Network Size Control -->
+    <details class="border rounded-lg bg-gray-50" open>
+      <summary class="cursor-pointer p-4 select-none font-semibold text-gray-700 text-sm hover:bg-gray-100 rounded-lg">
+        <span class="inline-flex items-center justify-between w-full">
+          <span>Network Size</span>
+          <span class="font-mono font-semibold text-gray-600">{maxNodes} nodes</span>
+        </span>
+      </summary>
+      <div class="px-4 pb-4 space-y-2">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-600">10</span>
+          <input 
+            type="range" 
+            min="10" 
+            max={$items.length} 
+            step="10" 
+            bind:value={maxNodes}
+            class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+          <span class="text-xs text-gray-600">{$items.length}</span>
+        </div>
+        <p class="text-[10px] text-gray-500">Control the number of nodes displayed in the visualization. Smaller networks load faster and are easier to explore.</p>
+      </div>
+    </details>
+
+    <!-- Weight Sliders -->
+    <details class="border rounded-lg bg-gray-50" open>
+      <summary class="cursor-pointer p-4 select-none hover:bg-gray-100 rounded-lg">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700">Similarity Weights</h3>
+          <button
+            class="px-3 py-1 text-xs rounded border bg-white hover:bg-gray-100 text-gray-700"
+            on:click|stopPropagation={() => { NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 }; }}
+            title="Reset weights to default values">
+            Reset Weights
+          </button>
+        </div>
+      </summary>
+      <div class="px-4 pb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Text Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>
+              Text
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.text.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.text}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+          />
+        </div>
+
+        <!-- Date Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>
+              Date
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.date.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.date}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          />
+        </div>
+
+        <!-- Place Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>
+              Place
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.place.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.place}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+          />
+        </div>
+
+        <!-- User Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-purple-500 rounded"></span>
+              User
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.user.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.user}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+          />
+        </div>
+      </div>
+        <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
+      </div>
+    </details>
+
+    <!-- Control Buttons -->
     <div class="flex gap-4 items-center flex-wrap">
       <button 
         class="px-3 py-1 bg-gray-600 text-white rounded text-sm"
@@ -223,7 +323,11 @@
             items={$items}
             neighbors={data.neighbors}
             userSimilarity={$userSimilarity}
+            textWeight={NEIGHBOR_WEIGHTS.text}
+            dateWeight={NEIGHBOR_WEIGHTS.date}
+            placeWeight={NEIGHBOR_WEIGHTS.place}
             userWeight={NEIGHBOR_WEIGHTS.user}
+            maxNodes={maxNodes}
             selectedId={$selectedId}
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}
@@ -294,7 +398,7 @@
                 {#each hoveredNeighbors as n}
                   {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
                   {@const userScore = $userSimilarity.get([currentId, n.id].sort().join('|')) ?? 0}
-                  {@const adjustedScore = (n.score ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
+                  {@const adjustedScore = NEIGHBOR_WEIGHTS.text * (n.S_text ?? 0) + NEIGHBOR_WEIGHTS.date * (n.S_date ?? 0) + NEIGHBOR_WEIGHTS.place * (n.S_place ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
                   <li class="py-2">
                     <div class="flex items-start justify-between gap-2">
                       <button class="text-left text-sm hover:underline" on:click={() => { selectedId.set(n.id); hoveredId = null; }}>
@@ -326,35 +430,39 @@
     </div>
   </div>
 
-{:else}
-  <!-- Original List View -->
-  <div class="grid md:grid-cols-3 gap-4">
-    <section class="md:col-span-1 space-y-3">
-      <h2 class="text-lg font-semibold">Search & Filter</h2>
+<!-- Search & Filter Section -->
+<div class="mt-8 border-t pt-6">
+  <div class="max-w-6xl mx-auto">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Search & Filter</h2>
+    
+    <div class="space-y-4">
+      <div class="flex gap-3 flex-wrap items-center">
+        <input class="border rounded px-3 py-2 flex-1 min-w-[200px]" placeholder="Search title…" bind:value={query} />
 
-      <input class="border rounded px-2 py-1 w-full" placeholder="Search title…" bind:value={query} />
-
-      <div class="flex gap-2">
-        <select class="border rounded px-2 py-1" on:change={(e)=>filters.set({...$filters, lang: (e.target as HTMLSelectElement).value || undefined})}>
+        <select class="border rounded px-3 py-2" on:change={(e)=>filters.set({...$filters, lang: (e.target as HTMLSelectElement).value || undefined})}>
           <option value="">All languages</option>
           {#each Array.from(new Set($items.flatMap(it => it.language || []))) as lng}
             <option value={lng}>{lng}</option>
           {/each}
         </select>
 
-        <input class="border rounded px-2 py-1 w-24" type="number" placeholder="Year ≥"
+        <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≥"
           on:change={(e)=>filters.set({...$filters, yearFrom: Number((e.target as HTMLInputElement).value)||undefined})} />
-        <input class="border rounded px-2 py-1 w-24" type="number" placeholder="Year ≤"
+        <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≤"
           on:change={(e)=>filters.set({...$filters, yearTo: Number((e.target as HTMLInputElement).value)||undefined})} />
       </div>
 
-      <ul class="border rounded divide-y max-h-[50vh] overflow-auto">
+      <div class="text-sm text-gray-600">
+        Showing {Math.min(filtered.length, 200)} of {filtered.length} items
+      </div>
+
+      <ul class="border rounded divide-y max-h-[60vh] overflow-auto bg-white">
         {#each filtered.slice(0, 200) as it}
           <li class="p-0">
             <button
               type="button"
-              class="w-full text-left p-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              on:click={() => selectedId.set(it.id)}
+              class="w-full text-left p-3 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 {$selectedId === it.id ? 'bg-blue-50' : ''}"
+              on:click={() => { selectedId.set(it.id); if (networkGraph) networkGraph.centerOnNode?.(it.id); }}
             >
               <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
               <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
@@ -362,264 +470,7 @@
           </li>
         {/each}
       </ul>
-    </section>
-
-    <section class="md:col-span-2 space-y-4">
-      {#if $selectedId}
-        <!-- Selected Item -->
-        {#if $byId.get($selectedId)}
-          {@const it = $byId.get($selectedId)!}
-          {@const title = Array.isArray(it.title) ? it.title[0] : it.title}
-          <div class="border rounded p-3">
-            <div class="text-lg font-semibold">{title ?? '(no title)'}</div>
-            <div class="text-sm text-gray-600">{it.year ?? ''} · {(it.language && it.language.join(', ')) || ''}</div>
-          </div>
-        {:else}
-          <div class="text-gray-500">No item found.</div>
-        {/if}
-
-        <!-- Neighbors List -->
-        <div class="border rounded">
-          <div class="px-3 py-2 font-semibold bg-gray-50">Closest neighbors</div>
-          <ul class="divide-y max-h-[40vh] overflow-auto">
-            {#each $neighborsOfSelected as n}
-              {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
-              <li class="p-2 flex justify-between items-center">
-                <button class="text-left text-sm hover:underline" on:click={() => selectedId.set(n.id)}>
-                  {t ?? n.id}
-                </button>
-                <span class="text-xs text-gray-500">{n.score.toFixed(2)}</span>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {:else}
-        <p class="text-gray-600">Select an item on the left to see its "good neighbors."</p>
-      {/if}
-    </section>
-  </div>
-{/if}
-
-{#if showNetworkView}
-<!-- About Section: Timeline/Stepped Layout -->
-<div class="mt-12 border-t-2 pt-8 bg-gradient-to-b from-gray-50 to-white">
-  <div class="max-w-6xl mx-auto">
-    <div class="text-center mb-8">
-      <h2 class="text-3xl font-bold text-gray-800 mb-2">Understanding the Visualization</h2>
-      <p class="text-gray-600">Follow the journey from concept to interaction</p>
-    </div>
-
-    <!-- Timeline Container -->
-    <div class="relative">
-      <!-- Vertical connecting line (hidden on mobile, visible on larger screens) -->
-      <div class="hidden md:block absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-green-400 via-purple-400 to-amber-400"></div>
-
-      <!-- Step 1: What -->
-      <div class="relative mb-8 md:mb-12">
-        <div class="flex flex-col md:flex-row gap-4 items-start">
-          <!-- Number badge -->
-          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
-            <span class="text-2xl">👁️</span>
-          </div>
-          
-          <!-- Content card -->
-          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-blue-400">
-            <details bind:this={detailsRefs[0]} open class="group">
-              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
-                <div>
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Step 1</span>
-                    <span class="text-gray-400">→</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-gray-800">What are you seeing here?</h3>
-                  <p class="text-sm text-gray-500 mt-1">Discover the topology of connections</p>
-                </div>
-                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
-              </summary>
-              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
-                <p>
-                  Each node is an abstract representation of an archival item (digital object + digital 
-                  artifact). Edges indicate similarity based on metadata such as titles, dates, places, 
-                  or themes. Clusters emerge where items share multiple attributes, forming 
-                  "neighborhoods" of related material.
-                </p>
-                <p>
-                  These neighborhoods shift as you interact with the archive: items you view, bookmark, 
-                  or hover over influence the layout, bringing similar nodes closer to your focus. 
-                  This simulates a personalized exploration of the archive—one in which your interests 
-                  and questions shape the connections you see, surfacing related items that might remain 
-                  hidden in traditional search or browsing workflows.
-                </p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: How -->
-      <div class="relative mb-8 md:mb-12">
-        <div class="flex flex-col md:flex-row gap-4 items-start">
-          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
-            <span class="text-2xl">🤔</span>
-          </div>
-          
-          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-green-400">
-            <details bind:this={detailsRefs[1]} class="group">
-              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
-                <div>
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="text-xs font-semibold text-green-600 uppercase tracking-wider">Step 2</span>
-                    <span class="text-gray-400">→</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-gray-800">How to use it?</h3>
-                  <p class="text-sm text-gray-500 mt-1">Navigate and interact with the archive</p>
-                </div>
-                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
-              </summary>
-              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
-                <p>
-                  In Network View, hover over nodes to preview item details in the side panel; click a 
-                  node to pin it there. Use the search and filter panel to locate specific items or narrow 
-                  the view. The graph adjusts dynamically based on your interactions, highlighting items 
-                  similar to those you engage with.
-                </p>
-                <p>
-                  From the details panel, you can bookmark items for later reference; these bookmarks 
-                  also influence the layout, bringing related materials closer to your attention. You can 
-                  explore each item's "top neighbors," with similarity scores broken down by attribute 
-                  type. The more you interact, the more the graph adapts to your evolving interests.
-                </p>
-                <p class="text-sm italic text-gray-500">
-                  💡 Tip: You can reset your interaction history at any time to start fresh.
-                </p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Privacy -->
-      <div class="relative mb-8 md:mb-12">
-        <div class="flex flex-col md:flex-row gap-4 items-start">
-          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
-            <span class="text-2xl">📊</span>
-          </div>
-          
-          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-purple-400">
-            <details bind:this={detailsRefs[2]} class="group">
-              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
-                <div>
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="text-xs font-semibold text-purple-600 uppercase tracking-wider">Step 3</span>
-                    <span class="text-gray-400">→</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-gray-800">What about my data?</h3>
-                  <p class="text-sm text-gray-500 mt-1">Your privacy and data security</p>
-                </div>
-                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
-              </summary>
-              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
-                <p>
-                  Your interactions (views, hovers, bookmarks) are stored locally in your browser and 
-                  are never transmitted to any server. This keeps your exploration private and 
-                  personalized without external tracking.
-                </p>
-                <p>
-                  It also means your history will disappear if you clear your browser data or switch 
-                  devices. This is a conceptual demo meant to prototype new modes of archival navigation, 
-                  not a production platform.
-                </p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4: Why -->
-      <div class="relative">
-        <div class="flex flex-col md:flex-row gap-4 items-start">
-          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-xl shadow-lg z-10">
-            <span class="text-2xl">✳</span>
-          </div>
-          
-          <div class="flex-1 bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 border-amber-400">
-            <details bind:this={detailsRefs[3]} class="group">
-              <summary class="cursor-pointer p-6 select-none flex items-center justify-between">
-                <div>
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Step 4</span>
-                    <span class="text-gray-400">🕸️</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-gray-800">Why this visualization?</h3>
-                  <p class="text-sm text-gray-500 mt-1">The conceptual foundation</p>
-                </div>
-                <span class="text-gray-400 text-xl group-open:rotate-180 transition-transform duration-300">▼</span>
-              </summary>
-              <div class="px-6 pb-6 text-gray-600 space-y-3 animate-fadeIn border-t pt-4">
-                <p>
-                  Digital concepts are hard to grasp narratively. Technical jargon and algorithmic 
-                  formulas often obscure more than they clarify, and recommendation systems can feel 
-                  like black boxes even to their creators.
-                </p>
-                <p>
-                  By visualizing the relational topology of an archive, and allowing users to see how 
-                  their interactions reshape that topology, this project aims to demystify how digital 
-                  archives suggest, relate, and connect items. The visualization invites reflection on 
-                  how meaning is constructed through adjacency and traversal, challenging traditional 
-                  notions of archival organization and navigation.
-                </p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Expand All Toggle -->
-    <div class="flex justify-center mt-8">
-      <button
-        on:click={toggleAllDetails}
-        class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors shadow-sm hover:shadow-md"
-      >
-        {allExpanded ? '▲ Collapse All Steps' : '▼ Expand All Steps'}
-      </button>
     </div>
   </div>
 </div>
-{/if}
 </div>
-
-<style>
-  .grid { display: grid; }
-  
-  /* Fade-in animation for accordion content */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  
-  /* Smooth details marker animation */
-  details summary::-webkit-details-marker {
-    display: none;
-  }
-  
-  details summary::marker {
-    display: none;
-  }
-  
-  /* Enhanced hover effects */
-  details:hover {
-    transform: translateY(-2px);
-  }
-</style>
-

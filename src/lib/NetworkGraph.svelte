@@ -40,6 +40,9 @@
   // Personalization inputs
   // Map key format: "idA|idB" with ids sorted lexicographically
   export let userSimilarity: Map<string, number> = new Map();
+  export let textWeight: number = 0.6;
+  export let dateWeight: number = 0.2;
+  export let placeWeight: number = 0.2;
   export let userWeight: number = 0.0; // δ weight for user component in link score
 
   let container: HTMLDivElement;
@@ -222,10 +225,16 @@
     for (const l of links) {
       const s = typeof l.source === 'string' ? l.source : l.source.id;
       const t = typeof l.target === 'string' ? l.target : l.target.id;
-      const base = Number.isFinite(l.baseScore as number) ? (l.baseScore as number) : l.score;
+      // Recalculate score from individual components using current weights
+      const textScore = (l.S_text ?? 0) * textWeight;
+      const dateScore = (l.S_date ?? 0) * dateWeight;
+      const placeScore = (l.S_place ?? 0) * placeWeight;
       const u = userSimilarity?.get(pairKey(s, t)) ?? 0;
+      const userScore = u * userWeight;
+      // Combine all weighted components
+      const combined = textScore + dateScore + placeScore + userScore;
       // Clamp to [0,1] to keep forces stable
-      const eff = Math.max(0, Math.min(1, base + (userWeight || 0) * u));
+      const eff = Math.max(0, Math.min(1, combined));
       l.score = eff;
     }
   }
@@ -426,6 +435,9 @@
   // When personalization inputs change, update link scores, community colors, styles, and reheating forces
   $: if (simulation && svg) {
     // Reference these so Svelte tracks changes
+    const _tw = textWeight;
+    const _dw = dateWeight;
+    const _pw = placeWeight;
     const _uw = userWeight;
     const _us = userSimilarity;
     // Recompute effective scores

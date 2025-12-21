@@ -12,7 +12,7 @@
   let panelOpen = true;
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
-  const NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
+  let NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
   $: currentId = hoveredId ?? $selectedId ?? null;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
   // Resizable panel state (desktop)
@@ -217,6 +217,97 @@
       </button>
     </div>
 
+    <!-- Weight Sliders -->
+    <div class="border rounded-lg bg-gray-50 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-700">Similarity Weights</h3>
+        <button
+          class="px-3 py-1 text-xs rounded border bg-white hover:bg-gray-100 text-gray-700"
+          on:click={() => { NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 }; }}
+          title="Reset weights to default values">
+          Reset Weights
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Text Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>
+              Text
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.text.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.text}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+          />
+        </div>
+
+        <!-- Date Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>
+              Date
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.date.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.date}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          />
+        </div>
+
+        <!-- Place Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>
+              Place
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.place.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.place}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+          />
+        </div>
+
+        <!-- User Weight -->
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block w-2 h-2 bg-purple-500 rounded"></span>
+              User
+            </span>
+            <span class="font-mono font-semibold">{NEIGHBOR_WEIGHTS.user.toFixed(2)}</span>
+          </label>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            bind:value={NEIGHBOR_WEIGHTS.user}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+          />
+        </div>
+      </div>
+      <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
+    </div>
+
     <div class="flex flex-col lg:flex-row gap-4 items-start">
       <div class="flex-1 min-w-0">
         {#if browser}
@@ -225,6 +316,9 @@
             items={$items}
             neighbors={data.neighbors}
             userSimilarity={$userSimilarity}
+            textWeight={NEIGHBOR_WEIGHTS.text}
+            dateWeight={NEIGHBOR_WEIGHTS.date}
+            placeWeight={NEIGHBOR_WEIGHTS.place}
             userWeight={NEIGHBOR_WEIGHTS.user}
             selectedId={$selectedId}
             onNodeClick={handleNodeClick}
@@ -296,7 +390,7 @@
                 {#each hoveredNeighbors as n}
                   {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
                   {@const userScore = $userSimilarity.get([currentId, n.id].sort().join('|')) ?? 0}
-                  {@const adjustedScore = (n.score ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
+                  {@const adjustedScore = NEIGHBOR_WEIGHTS.text * (n.S_text ?? 0) + NEIGHBOR_WEIGHTS.date * (n.S_date ?? 0) + NEIGHBOR_WEIGHTS.place * (n.S_place ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
                   <li class="py-2">
                     <div class="flex items-start justify-between gap-2">
                       <button class="text-left text-sm hover:underline" on:click={() => { selectedId.set(n.id); hoveredId = null; }}>

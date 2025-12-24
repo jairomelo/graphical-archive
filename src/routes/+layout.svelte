@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { items, edges } from '$lib/stores';
 	
 	let { children } = $props();
 </script>
@@ -90,32 +89,22 @@
     </div>
 
     <!-- Bottom bar -->
-    <div class="pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-500">
-      <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-        <p>
-          © {new Date().getFullYear()} Jairo Antonio Melo Flórez
-        </p>
-        <div class="flex items-center gap-3">
-          <a href="https://github.com/jairomelo/graphical-archive/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 transition-colors">
-            Code: MIT
-          </a>
-          <span class="text-gray-300">|</span>
-          <a href="https://github.com/jairomelo/graphical-archive/blob/main/LICENSE-CONTENT" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 transition-colors">
-            Content: CC BY-NC-SA 4.0
-          </a>
-        </div>
-      </div>
-      <div class="flex items-center gap-4">
-        {#if $items.length > 0}
-          <span class="inline-flex items-center gap-1">
-            <i class="bi bi-diagram-3"></i>
-            {$items.length} items
-          </span>
-          <span class="inline-flex items-center gap-1">
-            <i class="bi bi-arrows-angle-contract"></i>
-            {$edges.length} connections
-          </span>
-        {/if}
+    <div class="pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 text-xs text-gray-500">
+      <p>
+        © {new Date().getFullYear()} Jairo Antonio Melo Flórez
+      </p>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/jairomelo/graphical-archive/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 transition-colors inline-flex items-center gap-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3">
+            <path d="M8.75.75V2h.985c.304 0 .603.08.867.231l1.29.736c.038.022.08.033.124.033h2.234a.75.75 0 0 1 0 1.5h-.427l2.111 4.692a.75.75 0 0 1-.154.838l-.53-.53.529.531-.001.002-.002.002-.006.006-.006.005-.01.01-.045.04c-.21.176-.441.327-.686.45C14.556 10.78 13.88 11 13 11a4.498 4.498 0 0 1-2.023-.454 3.544 3.544 0 0 1-.686-.45l-.045-.04-.016-.015-.006-.006-.004-.004v-.001a.75.75 0 0 1-.154-.838L12.178 4.5h-.162c-.305 0-.604-.079-.868-.231l-1.29-.736a.245.245 0 0 0-.124-.033H8.75V13h2.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1 0-1.5h2.5V3.5h-.984a.245.245 0 0 0-.124.033l-1.289.737c-.265.15-.564.23-.869.23h-.162l2.112 4.692a.75.75 0 0 1-.154.838l-.53-.53.529.531-.001.002-.002.002-.006.006-.016.015-.045.04c-.21.176-.441.327-.686.45C4.556 10.78 3.88 11 3 11a4.498 4.498 0 0 1-2.023-.454 3.544 3.544 0 0 1-.686-.45l-.045-.04-.016-.015-.006-.006-.004-.004v-.001a.75.75 0 0 1-.154-.838L2.178 4.5H1.75a.75.75 0 0 1 0-1.5h2.234a.249.249 0 0 0 .125-.033l1.288-.737c.265-.15.564-.23.869-.23h.984V.75a.75.75 0 0 1 1.5 0Zm2.945 8.477c.285.135.718.273 1.305.273s1.02-.138 1.305-.273L13 6.327Zm-10 0c.285.135.718.273 1.305.273s1.02-.138 1.305-.273L3 6.327Z" />
+          </svg>
+          <span>Code: MIT</span>
+        </a>
+        <span class="text-gray-300">|</span>
+        <a href="https://github.com/jairomelo/graphical-archive/blob/main/LICENSE-CONTENT" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 transition-colors inline-flex items-center gap-1">
+          <i class="bi bi-cc-circle-fill"></i>
+          <span>Content: CC BY-NC-SA 4.0</span>
+        </a>
       </div>
     </div>
   </div>

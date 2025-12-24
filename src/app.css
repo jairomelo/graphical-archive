@@ -44,3 +44,12 @@
   .network-container {
     min-height: 600px;
   }
+
+  .licenseicon {
+    height: 1em;
+    width: auto;
+    display: inline;
+    margin-right: 0.25em;
+    margin-bottom: 0.1em;
+    color: #6a7282; /* Tailwind gray-500 */
+  }

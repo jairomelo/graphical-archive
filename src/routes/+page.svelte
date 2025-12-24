@@ -57,11 +57,8 @@
   let query = '';
   $: q = query.toLowerCase();
   
-  // Items visible in the network (first maxNodes items)
-  $: visibleInNetwork = new Set($items.slice(0, maxNodes).map(it => it.id));
-  
-  // Filter items based on search/filters AND network visibility
-  $: filtered = $items.filter(it => {
+  // First, filter items based on search/filters (without maxNodes limit)
+  $: filteredBySearch = $items.filter(it => {
     const t = (Array.isArray(it.title) ? it.title[0] : it.title) ?? '';
     const okQ = !q || String(t).toLowerCase().includes(q);
     const lang = (it.language && it.language[0]) || '';
@@ -70,9 +67,17 @@
     const okYear =
       (!$filters.yearFrom || y >= $filters.yearFrom) &&
       (!$filters.yearTo   || y <= $filters.yearTo   || Number.isNaN(y));
-    const inNetwork = visibleInNetwork.has(it.id);
-    return okQ && okLang && okYear && inNetwork;
+    return okQ && okLang && okYear;
   });
+  
+  // Items to show in network: filtered items limited by maxNodes
+  $: itemsForNetwork = filteredBySearch.slice(0, maxNodes);
+  
+  // Set of visible items in network (for syncing the list)
+  $: visibleInNetwork = new Set(itemsForNetwork.map(it => it.id));
+  
+  // Final filtered list (same as filteredBySearch, but can be limited for display)
+  $: filtered = filteredBySearch.filter(it => visibleInNetwork.has(it.id));
 
   function handleNodeClick(id: string) {
     // Empty string signals clear selection
@@ -182,7 +187,7 @@
       <summary class="cursor-pointer p-4 select-none font-semibold text-gray-700 text-sm hover:bg-gray-100 rounded-lg">
         <span class="inline-flex items-center justify-between w-full">
           <span>Network Size</span>
-          <span class="font-mono font-semibold text-gray-600">{maxNodes} nodes</span>
+          <span class="font-mono font-semibold text-gray-600">{Math.min(maxNodes, filteredBySearch.length)} / {filteredBySearch.length} nodes</span>
         </span>
       </summary>
       <div class="px-4 pb-4 space-y-2">
@@ -191,14 +196,14 @@
           <input 
             type="range" 
             min="10" 
-            max={$items.length} 
+            max={Math.max(10, filteredBySearch.length)} 
             step="10" 
             bind:value={maxNodes}
             class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
           />
-          <span class="text-xs text-gray-600">{$items.length}</span>
+          <span class="text-xs text-gray-600">{filteredBySearch.length}</span>
         </div>
-        <p class="text-[10px] text-gray-500">Control the number of nodes displayed in the visualization. Smaller networks load faster and are easier to explore.</p>
+        <p class="text-[10px] text-gray-500">Control the number of nodes from filtered results. Adjust search/filters above to change available items.</p>
       </div>
     </details>
 
@@ -328,7 +333,7 @@
         {#if browser}
           <NetworkGraph 
             bind:this={networkGraph}
-            items={$items}
+            items={itemsForNetwork}
             neighbors={data.neighbors}
             userSimilarity={$userSimilarity}
             textWeight={NEIGHBOR_WEIGHTS.text}

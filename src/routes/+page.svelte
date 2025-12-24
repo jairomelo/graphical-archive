@@ -352,7 +352,7 @@
           
           <div class="space-y-3">
             <div class="flex gap-3 flex-wrap items-center">
-              <input class="border rounded px-3 py-2 flex-1 min-w-[200px]" placeholder="Search title…" bind:value={query} />
+              <input type="search" class="border rounded px-3 py-2 flex-1 min-w-[200px]" placeholder="Search title…" bind:value={query} />
 
               <select class="border rounded px-3 py-2" on:change={(e)=>filters.set({...$filters, lang: (e.target as HTMLSelectElement).value || undefined})}>
                 <option value="">All languages</option>

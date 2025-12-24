@@ -322,7 +322,9 @@
     </div>
 
     <div class="flex flex-col lg:flex-row gap-4 items-start">
-      <div class="flex-1 min-w-0">
+      <!-- Left Column: Graph + Search & Filter -->
+      <div class="flex-1 min-w-0 space-y-4">
+        <!-- Network Graph -->
         {#if browser}
           <NetworkGraph 
             bind:this={networkGraph}
@@ -343,8 +345,51 @@
             Loading client view…
           </div>
         {/if}
+
+        <!-- Search & Filter Section -->
+        <div class="border rounded-lg bg-white p-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-3">Search & Filter</h3>
+          
+          <div class="space-y-3">
+            <div class="flex gap-3 flex-wrap items-center">
+              <input class="border rounded px-3 py-2 flex-1 min-w-[200px]" placeholder="Search title…" bind:value={query} />
+
+              <select class="border rounded px-3 py-2" on:change={(e)=>filters.set({...$filters, lang: (e.target as HTMLSelectElement).value || undefined})}>
+                <option value="">All languages</option>
+                {#each Array.from(new Set($items.flatMap(it => it.language || []))) as lng}
+                  <option value={lng}>{lng}</option>
+                {/each}
+              </select>
+
+              <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≥"
+                on:change={(e)=>filters.set({...$filters, yearFrom: Number((e.target as HTMLInputElement).value)||undefined})} />
+              <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≤"
+                on:change={(e)=>filters.set({...$filters, yearTo: Number((e.target as HTMLInputElement).value)||undefined})} />
+            </div>
+
+            <div class="text-sm text-gray-600">
+              Showing {Math.min(filtered.length, 200)} of {filtered.length} items
+            </div>
+
+            <ul class="border rounded divide-y max-h-[50vh] overflow-auto bg-gray-50">
+              {#each filtered.slice(0, 200) as it}
+                <li class="p-0">
+                  <button
+                    type="button"
+                    class="w-full text-left p-3 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 {$selectedId === it.id ? 'bg-blue-50' : ''}"
+                    on:click={() => { selectedId.set(it.id); if (networkGraph) networkGraph.centerOnNode?.(it.id); }}
+                  >
+                    <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
+                    <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        </div>
       </div>
 
+      <!-- Right Column: Vertical resizer + Detail Panel -->
       <!-- Vertical resizer: visible on desktop when panel is open -->
       <div
         role="separator"
@@ -358,7 +403,7 @@
 
       <aside
         id="preview-panel"
-        class="border rounded-lg p-3 bg-gray-50 max-h-[80vh] overflow-auto w-full lg:w-auto flex-shrink-0 {panelOpen ? 'block' : 'hidden'}"
+        class="border rounded-lg p-3 bg-gray-50 max-h-[140vh] overflow-auto w-full lg:w-auto flex-shrink-0 {panelOpen ? 'block' : 'hidden'}"
         aria-hidden={!panelOpen}
         style="width: {panelOpen ? panelWidth + 'px' : 'auto'}"
       >
@@ -435,48 +480,4 @@
       </aside>
     </div>
   </div>
-
-<!-- Search & Filter Section -->
-<div class="mt-8 border-t pt-6">
-  <div class="max-w-6xl mx-auto">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">Search & Filter</h2>
-    
-    <div class="space-y-4">
-      <div class="flex gap-3 flex-wrap items-center">
-        <input class="border rounded px-3 py-2 flex-1 min-w-[200px]" placeholder="Search title…" bind:value={query} />
-
-        <select class="border rounded px-3 py-2" on:change={(e)=>filters.set({...$filters, lang: (e.target as HTMLSelectElement).value || undefined})}>
-          <option value="">All languages</option>
-          {#each Array.from(new Set($items.flatMap(it => it.language || []))) as lng}
-            <option value={lng}>{lng}</option>
-          {/each}
-        </select>
-
-        <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≥"
-          on:change={(e)=>filters.set({...$filters, yearFrom: Number((e.target as HTMLInputElement).value)||undefined})} />
-        <input class="border rounded px-3 py-2 w-32" type="number" placeholder="Year ≤"
-          on:change={(e)=>filters.set({...$filters, yearTo: Number((e.target as HTMLInputElement).value)||undefined})} />
-      </div>
-
-      <div class="text-sm text-gray-600">
-        Showing {Math.min(filtered.length, 200)} of {filtered.length} items
-      </div>
-
-      <ul class="border rounded divide-y max-h-[60vh] overflow-auto bg-white">
-        {#each filtered.slice(0, 200) as it}
-          <li class="p-0">
-            <button
-              type="button"
-              class="w-full text-left p-3 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 {$selectedId === it.id ? 'bg-blue-50' : ''}"
-              on:click={() => { selectedId.set(it.id); if (networkGraph) networkGraph.centerOnNode?.(it.id); }}
-            >
-              <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
-              <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </div>
-  </div>
-</div>
 </div>

@@ -56,6 +56,11 @@
 
   let query = '';
   $: q = query.toLowerCase();
+  
+  // Items visible in the network (first maxNodes items)
+  $: visibleInNetwork = new Set($items.slice(0, maxNodes).map(it => it.id));
+  
+  // Filter items based on search/filters AND network visibility
   $: filtered = $items.filter(it => {
     const t = (Array.isArray(it.title) ? it.title[0] : it.title) ?? '';
     const okQ = !q || String(t).toLowerCase().includes(q);
@@ -65,7 +70,8 @@
     const okYear =
       (!$filters.yearFrom || y >= $filters.yearFrom) &&
       (!$filters.yearTo   || y <= $filters.yearTo   || Number.isNaN(y));
-    return okQ && okLang && okYear;
+    const inNetwork = visibleInNetwork.has(it.id);
+    return okQ && okLang && okYear && inNetwork;
   });
 
   function handleNodeClick(id: string) {

@@ -486,3 +486,10 @@
     </div>
   </div>
 </div>
+
+<div class="p-4 space-y-4">
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold" style="display: inline-block;"><img src={favicon} alt="Graphical Archive logo" class="navbar-logo"> Graphical Archive</h1>
+    <a href="https://github.com/jairomelo/graphical-archive" target="_blank" class="text-2xl text-gray-600" aria-label="github repository"><i class="bi bi-github"></i></a>
+  </div>
+</div>

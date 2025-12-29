@@ -18,9 +18,6 @@
     </a>
     <nav class="flex items-center gap-6">
       <a href="/about" class="text-sm text-gray-600 hover:text-gray-900 transition-colors">About</a>
-      <a href="https://github.com/jairomelo/graphical-archive" target="_blank" rel="noopener noreferrer" class="text-2xl text-gray-600 hover:text-gray-900 transition-colors" aria-label="GitHub repository">
-        <i class="bi bi-github"></i>
-      </a>
     </nav>
   </div>
 </header>
@@ -80,10 +77,12 @@
           <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md font-medium">D3.js</span>
           <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Python</span>
           <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-md font-medium">Europeana API</span>
+          <span class="px-2 py-1 bg-pink-100 text-pink-700 text-xs rounded-md font-medium">Claude Sonnet 4.5</span>
         </div>
         <p class="text-xs text-gray-500 mt-3 leading-relaxed">
           Data sourced from Europeana Collections. Network metrics computed using 
           semantic similarity, temporal distance, and user interaction patterns.
+          Development assisted by Claude AI.
         </p>
       </div>
     </div>

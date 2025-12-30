@@ -178,12 +178,12 @@
     </p>
 
     <p>
-        The next visualization shows a sample of nodes from the archive, each representing a record. The nodes are colored according to their community clusters, which are automatically detected using a <strong>label propagation algorithm</strong>. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the <em>relational structure</em> of the network itself. Nodes group together based on their proximity across three dimensions: <strong>textual similarity</strong> (metadata, descriptions, concepts), <strong>temporal proximity</strong> (date relationships), and <strong>spatial proximity</strong> (geographic location). In the full interface, user interactions (views, bookmarks, navigation patterns) can also influence these relationships, creating personalized pathways through the archive. This means records might cluster across different collections if they share strong similarities:
+        The next visualization shows a sample of 50 nodes from the archive, each representing a record. The nodes are colored according to their community clusters, which are automatically detected using a <strong>label propagation algorithm</strong>. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the <em>relational structure</em> of the network itself. Nodes group together based on their proximity across three dimensions: <strong>textual similarity</strong> (title, description, concepts), <strong>temporal proximity</strong> (date relationships), and <strong>spatial proximity</strong> (geographic location). In the full interface, user interactions (views, bookmarks, navigation patterns) can also influence these relationships, creating personalized pathways through the archive. This means records might cluster across different collections if they share strong similarities:
     </p>
 
     <div class="graph-container">
         <NetworkGraph 
-            items={$items.slice(0, 200)} 
+            items={$items.slice(0, 50)} 
             neighbors={neighbors} 
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}

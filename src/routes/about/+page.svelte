@@ -173,21 +173,22 @@
 
     <h2>Nodes and Edges</h2>
 
+    <h3>Understanding Nodes</h3>
+
     <p>
         We are representing each archival item as a <strong>node</strong> in a network graph. The complexity of the archival node is totally arbitrary, and can be understood as a "digital object" in the terms of Yuk Hui, that is: "objects that take shape on a screen or hide in the back end of a computer program, composed of data and metadata regulated by structures or schemas." <a href="#ref-huiExistenceDigitalObjects2016" class="citation"><sup>1</sup></a>
     </p>
 
     <p>
-        The next visualization shows a sample of 50 nodes from the archive, each representing a record. The nodes are colored according to their community clusters, which are automatically detected using a <strong>label propagation algorithm</strong>. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the <em>relational structure</em> of the network itself. Nodes group together based on their proximity across three dimensions: <strong>textual similarity</strong> (title, description, concepts), <strong>temporal proximity</strong> (date relationships), and <strong>spatial proximity</strong> (geographic location). In the full interface, user interactions (views, bookmarks, navigation patterns) can also influence these relationships, creating personalized pathways through the archive. This means records might cluster across different collections if they share strong similarities:
+        The visualization below shows a sample of 50 nodes from the archive, each representing a record. <strong>Click on any node</strong> to explore its complete metadata structure—this reveals what information each digital object carries:
     </p>
 
     <div class="graph-container">
         <NetworkGraph 
             items={$items.slice(0, 50)} 
-            neighbors={neighbors} 
+            neighbors={{}} 
             onNodeClick={handleNodeClick}
-            onEdgeClick={handleEdgeClick}
-            maxNodes={200}
+            maxNodes={50}
             minScore={0.02}
         />
     </div>
@@ -197,7 +198,42 @@
             <h4>Selected Node: {Array.isArray(selectedNode.title) ? selectedNode.title[0] : selectedNode.title}</h4>
             <pre><code class="language-json">{JSON.stringify(selectedNode, null, 2)}</code></pre>
         </div>
-    {:else if selectedEdge}
+    {:else}
+        <p class="instruction">Click on a node in the graph above to see its complete JSON structure.</p>
+    {/if}
+
+    <p>
+        The node is an abstraction, a capsule, that contains all the relevant metadata and the connections to the digital artifact itself (e.g., the link to the Europeana record, the IIIF manifest, etc.).
+    </p>
+
+    <h3>Connecting Through Edges</h3>
+
+    <p>
+        To avoid orphan nodes, every object must be connected to at least one other object through <strong>edges</strong>. Edges represent variable-strength relationships between nodes based on shared attributes. The proximity, or neighborness, of nodes is determined by a weighted score combining three similarity vectors:
+    </p>
+
+    <div class="vectors-matrix" bind:this={vectorMatrix}></div>
+
+    <p>
+        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The current implementation uses: <strong>60% textual similarity</strong>, <strong>20% temporal proximity</strong>, and <strong>20% spatial proximity</strong>.
+    </p>
+
+    <p>
+        Now let's see how these edges connect nodes in practice. The visualization below shows the same 50 nodes, but this time with their relationships visible as connecting lines. The nodes are colored according to their <strong>community clusters</strong>, which are automatically detected using a label propagation algorithm. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the relational structure of the network itself. <strong>Click on any edge</strong> (connection line) to see its detailed similarity breakdown:
+    </p>
+
+    <div class="graph-container">
+        <NetworkGraph 
+            items={$items.slice(0, 50)} 
+            neighbors={neighbors} 
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            maxNodes={50}
+            minScore={0.02}
+        />
+    </div>
+
+    {#if selectedEdge}
         <div class="selected-edge-info">
             <h4>Edge Relationship</h4>
             <div class="edge-nodes">
@@ -236,27 +272,14 @@
             </div>
         </div>
     {:else}
-        <p class="instruction">Click on a node to see its JSON structure, or click on an edge (connection line) to see the similarity scores between two nodes.</p>
+        <p class="instruction">Click on an edge (connection line) in the graph above to see the detailed similarity breakdown between two nodes.</p>
     {/if}
 
     <p>
-        The node is an abstraction, a capsule, that contains all the relevant metadata and the connections to the digital artifact itself (e.g., the link to the Europeana record, the IIIF manifest, etc.).
+        This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time. Records might cluster across different collections if they share strong similarities in their attributes.
     </p>
 
-    <p>
-        To avoid orphan nodes, every object must be connected to at least one other object through <strong>edges</strong>. Edges represent variable-strength relationships between nodes based on shared attributes. The proximity, or neighborness, of nodes is determined by a very simple score based on four vectors:
-    </p>
-
-    <div class="vectors-matrix" bind:this={vectorMatrix}></div>
-
-    <p>
-        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria.
-    </p>
-
-    <p>
-        <strong>Try it yourself:</strong> Click on any edge (connection line) in the graph above to see the detailed similarity breakdown between two nodes. Each edge displays its combined proximity score and the individual contributions from textual, temporal, and spatial vectors. This reveals how different dimensions of similarity contribute to the overall relationship strength.
-    </p>
-
+    <h2>Navigating the Archive</h2>
     <p>
         This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time.
     </p>

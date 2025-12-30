@@ -18,14 +18,9 @@
     import 'katex/dist/katex.min.css';
     import bibtexParse from 'bibtex-parse';
 
-    let vectorCells: HTMLElement[] = [];
+    let vectorMatrix: HTMLElement;
     
-    const vectors = [
-        '\\vec{\\text{Textual Similarity}}',
-        '\\vec{\\text{Date Proximity}}',
-        '\\vec{\\text{Geographic Proximity}}',
-        '\\vec{\\text{User Interactions}}'
-    ];
+    const matrixLatex = '\\begin{bmatrix} \\vec{\\text{metadata}} \\parallel \\vec{\\text{spatial}} \\parallel \\vec{\\text{temporal}} \\parallel \\vec{\\text{interaction}} \\end{bmatrix}';
 
     // BibTeX references
     let references: Record<string, any> = {};
@@ -97,14 +92,12 @@
     }
 
     onMount(() => {
-        vectorCells.forEach((cell, index) => {
-            if (cell) {
-                katex.render(vectors[index], cell, {
-                    throwOnError: false,
-                    displayMode: false
-                });
-            }
-        });
+        if (vectorMatrix) {
+            katex.render(matrixLatex, vectorMatrix, {
+                throwOnError: false,
+                displayMode: true
+            });
+        }
         
         loadReferences();
     });
@@ -182,16 +175,7 @@
         To avoid orphan nodes, every object must be connected to at least one other object through <strong>edges</strong>. Edges represent variable-strength relationships between nodes based on shared attributes. The proximity, or neighborness, of nodes is determined by a very simple score based on four vectors:
     </p>
 
-    <table class="vectors-table">
-        <tbody>
-            <tr>
-                <td bind:this={vectorCells[0]}></td>
-                <td bind:this={vectorCells[1]}></td>
-                <td bind:this={vectorCells[2]}></td>
-                <td bind:this={vectorCells[3]}></td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="vectors-matrix" bind:this={vectorMatrix}></div>
 
     <p>
         Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria.
@@ -300,18 +284,11 @@
         font-size: 0.9rem;
     }
 
-    .vectors-table {
-        width: 100%;
-        margin: 1.5rem 0;
-        border-collapse: collapse;
-    }
-
-    .vectors-table td {
-        padding: 1rem;
+    .vectors-matrix {
+        margin: 2rem 0;
         text-align: center;
-        border: 1px solid #ddd;
-        background-color: #f9f9f9;
-        font-weight: 500;
+        font-size: 1.2rem;
+        overflow-x: auto;
     }
 
     sup {

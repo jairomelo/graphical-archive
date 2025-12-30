@@ -29,6 +29,7 @@
     // Interactive graph state
     let selectedNode: any = null;
     let selectedEdge: { source: any; target: any; scores: any } | null = null;
+    let expandedSimilarity: 'text' | 'date' | 'place' | null = null;
     let neighbors: Record<string, any[]> = {};
     let edgesMap: Map<string, any> = new Map();
 
@@ -68,7 +69,17 @@
                 scores: edgeData
             };
             selectedNode = null; // Clear node selection when clicking an edge
+            expandedSimilarity = null; // Reset expanded view
         }
+    }
+
+    function toggleSimilarityDetail(type: 'text' | 'date' | 'place') {
+        expandedSimilarity = expandedSimilarity === type ? null : type;
+    }
+
+    function formatArrayField(field: any): string {
+        if (Array.isArray(field)) return field.join(', ');
+        return field || 'N/A';
     }
 
     // BibTeX references
@@ -252,19 +263,157 @@
                         <span class="score-label">Combined Score:</span>
                         <span class="score-value main">{(selectedEdge.scores.score * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item">
-                        <span class="score-label">Textual Similarity:</span>
+                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('text')}>
+                        <span class="score-label">Textual Similarity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_text * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item">
-                        <span class="score-label">Temporal Proximity:</span>
+                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('date')}>
+                        <span class="score-label">Temporal Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_date * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item">
-                        <span class="score-label">Spatial Proximity:</span>
+                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('place')}>
+                        <span class="score-label">Spatial Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_place * 100).toFixed(1)}%</span>
                     </div>
                 </div>
+                
+                {#if expandedSimilarity === 'text'}
+                    <div class="metadata-comparison">
+                        <h6>Textual Similarity Fields</h6>
+                        <p class="comparison-note">Calculated using TF-IDF cosine similarity on combined text:</p>
+                        <div class="comparison-grid">
+                            <div class="comparison-column">
+                                <strong>Source Node</strong>
+                                <div class="field-group">
+                                    <label>Title:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.source.title)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Concepts:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.source.concepts)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Description:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.source.description)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Place Label:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
+                                </div>
+                            </div>
+                            <div class="comparison-column">
+                                <strong>Target Node</strong>
+                                <div class="field-group">
+                                    <label>Title:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.target.title)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Concepts:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.target.concepts)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Description:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.target.description)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Place Label:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+                
+                {#if expandedSimilarity === 'date'}
+                    <div class="metadata-comparison">
+                        <h6>Temporal Proximity Fields</h6>
+                        <p class="comparison-note">Calculated using exponential kernel on year difference (bandwidth: 25 years):</p>
+                        <div class="comparison-grid">
+                            <div class="comparison-column">
+                                <strong>Source Node</strong>
+                                <div class="field-group">
+                                    <label>Year:</label>
+                                    <div class="field-value">{selectedEdge.source.year || 'Unknown'}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Date Begin:</label>
+                                    <div class="field-value">{selectedEdge.source.date_begin || 'N/A'}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Date End:</label>
+                                    <div class="field-value">{selectedEdge.source.date_end || 'N/A'}</div>
+                                </div>
+                            </div>
+                            <div class="comparison-column">
+                                <strong>Target Node</strong>
+                                <div class="field-group">
+                                    <label>Year:</label>
+                                    <div class="field-value">{selectedEdge.target.year || 'Unknown'}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Date Begin:</label>
+                                    <div class="field-value">{selectedEdge.target.date_begin || 'N/A'}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Date End:</label>
+                                    <div class="field-value">{selectedEdge.target.date_end || 'N/A'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+                
+                {#if expandedSimilarity === 'place'}
+                    <div class="metadata-comparison">
+                        <h6>Spatial Proximity Fields</h6>
+                        <p class="comparison-note">Calculated using Haversine distance with Gaussian kernel (bandwidth: 400 km):</p>
+                        <div class="comparison-grid">
+                            <div class="comparison-column">
+                                <strong>Source Node</strong>
+                                <div class="field-group">
+                                    <label>Coordinates:</label>
+                                    <div class="field-value">
+                                        {#if selectedEdge.source.place_lat && selectedEdge.source.place_lon}
+                                            {selectedEdge.source.place_lat.toFixed(4)}, {selectedEdge.source.place_lon.toFixed(4)}
+                                        {:else}
+                                            N/A
+                                        {/if}
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Place Label:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Country:</label>
+                                    <div class="field-value">{selectedEdge.source.country || 'N/A'}</div>
+                                </div>
+                            </div>
+                            <div class="comparison-column">
+                                <strong>Target Node</strong>
+                                <div class="field-group">
+                                    <label>Coordinates:</label>
+                                    <div class="field-value">
+                                        {#if selectedEdge.target.place_lat && selectedEdge.target.place_lon}
+                                            {selectedEdge.target.place_lat.toFixed(4)}, {selectedEdge.target.place_lon.toFixed(4)}
+                                        {:else}
+                                            N/A
+                                        {/if}
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Place Label:</label>
+                                    <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Country:</label>
+                                    <div class="field-value">{selectedEdge.target.country || 'N/A'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+                
                 <p class="score-explanation">
                     This edge represents a weighted combination of the three similarity vectors. The combined score is calculated as:
                     <em>0.6 × Textual + 0.2 × Temporal + 0.2 × Spatial</em>
@@ -479,6 +628,25 @@
         padding: 0.75rem;
         background-color: #f5f5f5;
         border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .score-item.clickable {
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .score-item.clickable:hover {
+        background-color: #e8f4ff;
+        border-color: #0066cc;
+        transform: translateX(4px);
+    }
+
+    .hint {
+        font-size: 0.75rem;
+        color: #0066cc;
+        font-weight: normal;
+        font-style: italic;
     }
 
     .score-label {
@@ -511,6 +679,87 @@
         font-style: italic;
         color: #0066cc;
         font-weight: 600;
+    }
+
+    .metadata-comparison {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background-color: #f0f8ff;
+        border-radius: 6px;
+        border-left: 4px solid #0066cc;
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .metadata-comparison h6 {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+        color: #004499;
+    }
+
+    .comparison-note {
+        font-size: 0.85rem;
+        color: #666;
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .comparison-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .comparison-column {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 6px;
+    }
+
+    .comparison-column > strong {
+        display: block;
+        margin-bottom: 1rem;
+        color: #004499;
+        font-size: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .field-group {
+        margin-bottom: 0.75rem;
+    }
+
+    .field-group label {
+        display: block;
+        font-weight: 600;
+        color: #555;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .field-value {
+        padding: 0.5rem;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: #333;
+        word-wrap: break-word;
     }
 
     sup {

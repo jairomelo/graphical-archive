@@ -262,20 +262,27 @@
             </summary>
             <div class="detail-content">
                 <p>
-                    Temporal proximity measures how close two items are in time using an exponential decay kernel. Items from the same year have maximum similarity (1.0), while similarity decreases exponentially as the time gap increases.
+                    Temporal proximity measures how close two items are in time using an exponential decay kernel with range-awareness. This approach respects the temporal uncertainty inherent in archival records.
                 </p>
-                <p><strong>Field used:</strong></p>
+                <p><strong>Fields used (priority order):</strong></p>
                 <ul>
-                    <li><code>year</code> — The main year associated with the item</li>
+                    <li><code>year</code> — The primary year (used as exact point when available)</li>
+                    <li><code>date_begin</code> and <code>date_end</code> — Date range boundaries (e.g., "1800-1850")</li>
+                    <li>Single date fallbacks — Uses <code>date_begin</code> or <code>date_end</code> alone if only one is available</li>
                 </ul>
+                <p>
+                    The algorithm first determines the temporal range for each item. If an exact <code>year</code> is specified, it's treated as a point in time. Otherwise, the range is constructed from <code>date_begin</code> and <code>date_end</code>. When comparing two items, the calculation finds the <strong>minimum distance between their temporal ranges</strong>.
+                </p>
                 <p class="note">
-                    <strong>Note:</strong> While items have <code>date_begin</code> and <code>date_end</code> fields in their metadata, these are <em>not currently used</em> in the temporal proximity calculation. Only the primary <code>year</code> field is considered.
+                    <strong>Key insight:</strong> Items with overlapping temporal ranges (e.g., 1800-1850 and 1840-1880) receive maximum temporal similarity, even if their midpoints differ. This better represents archival reality where dates are often uncertain or span multiple years.
                 </p>
                 <p>
-                    The calculation uses a bandwidth of <strong>25 years</strong>, meaning items 25 years apart retain about 37% similarity (e<sup>-1</sup>), while items 50 years apart have about 14% similarity (e<sup>-2</sup>).
+                    The calculation uses a bandwidth of <strong>25 years</strong>, meaning items whose ranges are 25 years apart retain about 37% similarity (e<sup>-1</sup>), while items 50 years apart have about 14% similarity (e<sup>-2</sup>).
                 </p>
                 <p class="formula">
-                    <em>S<sub>date</sub> = exp(-|year<sub>1</sub> - year<sub>2</sub>| / 25)</em>
+                    <em>S<sub>date</sub> = exp(-distance / 25)</em><br>
+                    <em>where distance = min_distance_between_ranges(item<sub>1</sub>, item<sub>2</sub>)</em><br>
+                    <em>distance = 0 if ranges overlap</em>
                 </p>
             </div>
         </details>

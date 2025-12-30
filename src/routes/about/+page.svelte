@@ -17,10 +17,59 @@
     import katex from 'katex';
     import 'katex/dist/katex.min.css';
     import bibtexParse from 'bibtex-parse';
+    import NetworkGraph from '$lib/NetworkGraph.svelte';
+    import { items, edges } from '$lib/stores';
+    
+    export let data;
 
     let vectorMatrix: HTMLElement;
     
     const matrixLatex = '\\begin{bmatrix} \\vec{\\text{metadata}} \\parallel \\vec{\\text{spatial}} \\parallel \\vec{\\text{temporal}} \\parallel \\vec{\\text{interaction}} \\end{bmatrix}';
+
+    // Interactive graph state
+    let selectedNode: any = null;
+    let selectedEdge: { source: any; target: any; scores: any } | null = null;
+    let neighbors: Record<string, any[]> = {};
+    let edgesMap: Map<string, any> = new Map();
+
+    // Normalize neighbors data and build edges map
+    function normalizeNeighbors(n: any) {
+        if (Array.isArray(n)) return n;
+        if (Array.isArray(n?.pairs)) {
+            return n.pairs.map((p: any) => ({ source: p.a, target: p.b, score: p.score }));
+        }
+        return n?.graph?.edges ?? [];
+    }
+
+    function handleNodeClick(id: string) {
+        selectedNode = $items.find(item => item.id === id);
+        selectedEdge = null; // Clear edge selection when clicking a node
+    }
+
+    function handleEdgeClick(sourceId: string, targetId: string) {
+        const sourceItem = $items.find(item => item.id === sourceId);
+        const targetItem = $items.find(item => item.id === targetId);
+        
+        if (!sourceItem || !targetItem) return;
+        
+        // Find edge data from neighbors
+        const sourceNeighbors = data.neighbors[sourceId] || [];
+        const targetNeighbors = data.neighbors[targetId] || [];
+        
+        let edgeData = sourceNeighbors.find((n: any) => n.id === targetId);
+        if (!edgeData) {
+            edgeData = targetNeighbors.find((n: any) => n.id === sourceId);
+        }
+        
+        if (edgeData) {
+            selectedEdge = {
+                source: sourceItem,
+                target: targetItem,
+                scores: edgeData
+            };
+            selectedNode = null; // Clear node selection when clicking an edge
+        }
+    }
 
     // BibTeX references
     let references: Record<string, any> = {};
@@ -92,6 +141,13 @@
     }
 
     onMount(() => {
+        // Load graph data
+        items.set(data.metadata || []);
+        edges.set(normalizeNeighbors(data.neighbors));
+        
+        // Build neighbors object for NetworkGraph
+        neighbors = data.neighbors || {};
+        
         if (vectorMatrix) {
             katex.render(matrixLatex, vectorMatrix, {
                 throwOnError: false,
@@ -122,50 +178,66 @@
     </p>
 
     <p>
-        For instance, the node with the title "Receipt to Irish Transport Workers' Union" encapsulates various attributes such as:
+        The next visualization shows a sample of nodes from the archive, each representing a record. The nodes are colored according to their community clusters, which are automatically detected using a <strong>label propagation algorithm</strong>. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the <em>relational structure</em> of the network itself. Nodes group together based on their proximity across three dimensions: <strong>textual similarity</strong> (metadata, descriptions, concepts), <strong>temporal proximity</strong> (date relationships), and <strong>spatial proximity</strong> (geographic location). In the full interface, user interactions (views, bookmarks, navigation patterns) can also influence these relationships, creating personalized pathways through the archive. This means records might cluster across different collections if they share strong similarities:
     </p>
 
-    <img src={nodeImage} alt="Representation of a node in the Graphical Archive" />
+    <div class="graph-container">
+        <NetworkGraph 
+            items={$items.slice(0, 200)} 
+            neighbors={neighbors} 
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            maxNodes={200}
+            minScore={0.02}
+        />
+    </div>
 
-    <pre><code class="language-json">{`{
-    "id": "/139/_ff36jk99d",
-    "title": [
-        "Receipt to Irish Transport Workers' Union"
-    ],
-    "creator": [
-        "Hopkins and Hopkins"
-    ],
-    "description": "Hopkins and Hopkins receipt to Irish Transport Workers' Union for the purchase of silver and gold medals.  John J. O'Neill was one of the founding members and a general secretary of the the Irish Transport and General Workers Union. He was one of three trustees to the deeds of Liberty Hall. He lived at 61 Ballybough Road, Dublin and took part in the Rising fighting at both Liberty Hall and the GPO. After the Rising he was interned in Frongoch.",
-    "year": "Unknown Year",
-    "timespan": [
-        "Unknown Timespan"
-    ],
-    "language": [
-        "en"
-    ],
-    "type": "TEXT",
-    "concepts": [],
-    "place": {
-        "en": [
-            "Dublin, Ireland",
-            "Frongoch, Bala, Gwynedd"
-        ]
-    },
-    "place_lat": 53.3478,
-    "place_lon": -6.25972,
-    "country": "Ireland",
-    "collection": "139_DRI_UGC_1916_memorabilia",
-    "thumbnail": "https://api.europeana.eu/thumbnail/v2/url.json?uri=http%3A%2F%2Frepository.dri.ie%2Fobjects%2Fff36jk99d%2Ffiles%2Ffj23kg83r%2Fdownload%3Ftype%3Dsurrogate&type=TEXT",
-    "link": "https://doi.org/10.7486/DRI.ff36jk99d",
-    "rights": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "iiif_manifest": "https://iiif.europeana.eu/presentation/139/_ff36jk99d/manifest",
-    "creators": [
-        "Terry O'Neill"
-    ],
-    "date_begin": "1938-01-28",
-    "date_end": "1938-07-25",
-    "place_label": "Dublin, Ireland"
-}`}</code></pre>
+    {#if selectedNode}
+        <div class="selected-node-info">
+            <h4>Selected Node: {Array.isArray(selectedNode.title) ? selectedNode.title[0] : selectedNode.title}</h4>
+            <pre><code class="language-json">{JSON.stringify(selectedNode, null, 2)}</code></pre>
+        </div>
+    {:else if selectedEdge}
+        <div class="selected-edge-info">
+            <h4>Edge Relationship</h4>
+            <div class="edge-nodes">
+                <div class="edge-node">
+                    <strong>Source:</strong> {Array.isArray(selectedEdge.source.title) ? selectedEdge.source.title[0] : selectedEdge.source.title}
+                </div>
+                <div class="edge-connector">↔</div>
+                <div class="edge-node">
+                    <strong>Target:</strong> {Array.isArray(selectedEdge.target.title) ? selectedEdge.target.title[0] : selectedEdge.target.title}
+                </div>
+            </div>
+            <div class="similarity-scores">
+                <h5>Similarity Breakdown</h5>
+                <div class="score-grid">
+                    <div class="score-item">
+                        <span class="score-label">Combined Score:</span>
+                        <span class="score-value main">{(selectedEdge.scores.score * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Textual Similarity:</span>
+                        <span class="score-value">{(selectedEdge.scores.S_text * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Temporal Proximity:</span>
+                        <span class="score-value">{(selectedEdge.scores.S_date * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Spatial Proximity:</span>
+                        <span class="score-value">{(selectedEdge.scores.S_place * 100).toFixed(1)}%</span>
+                    </div>
+                </div>
+                <p class="score-explanation">
+                    This edge represents a weighted combination of the three similarity vectors. The combined score is calculated as:
+                    <em>0.6 × Textual + 0.2 × Temporal + 0.2 × Spatial</em>
+                </p>
+            </div>
+        </div>
+    {:else}
+        <p class="instruction">Click on a node to see its JSON structure, or click on an edge (connection line) to see the similarity scores between two nodes.</p>
+    {/if}
 
     <p>
         The node is an abstraction, a capsule, that contains all the relevant metadata and the connections to the digital artifact itself (e.g., the link to the Europeana record, the IIIF manifest, etc.).
@@ -179,6 +251,10 @@
 
     <p>
         Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria.
+    </p>
+
+    <p>
+        <strong>Try it yourself:</strong> Click on any edge (connection line) in the graph above to see the detailed similarity breakdown between two nodes. Each edge displays its combined proximity score and the individual contributions from textual, temporal, and spatial vectors. This reveals how different dimensions of similarity contribute to the overall relationship strength.
     </p>
 
     <p>
@@ -289,6 +365,129 @@
         text-align: center;
         font-size: 1.2rem;
         overflow-x: auto;
+    }
+
+    .graph-container {
+        width: 100%;
+        height: 500px;
+        margin: 2rem 0;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .selected-node-info {
+        margin: 2rem 0;
+    }
+
+    .selected-node-info h4 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .instruction {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        padding: 2rem;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        margin: 2rem 0;
+    }
+
+    .selected-edge-info {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #0066cc;
+    }
+
+    .selected-edge-info h4 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+
+    .edge-nodes {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background-color: white;
+        border-radius: 6px;
+    }
+
+    .edge-node {
+        flex: 1;
+        padding: 0.5rem;
+    }
+
+    .edge-connector {
+        font-size: 2rem;
+        color: #0066cc;
+        font-weight: bold;
+    }
+
+    .similarity-scores {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 6px;
+    }
+
+    .similarity-scores h5 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        color: #333;
+    }
+
+    .score-grid {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .score-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+    }
+
+    .score-label {
+        font-weight: 500;
+        color: #555;
+    }
+
+    .score-value {
+        font-weight: 600;
+        color: #0066cc;
+        font-size: 1.1rem;
+    }
+
+    .score-value.main {
+        font-size: 1.3rem;
+        color: #004499;
+    }
+
+    .score-explanation {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .score-explanation em {
+        font-style: italic;
+        color: #0066cc;
+        font-weight: 600;
     }
 
     sup {

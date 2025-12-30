@@ -229,6 +229,98 @@
         Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The current implementation uses: <strong>60% textual similarity</strong>, <strong>20% temporal proximity</strong>, and <strong>20% spatial proximity</strong>.
     </p>
 
+    <div class="methodology-callouts">
+        <details class="methodology-detail">
+            <summary>
+                <strong>Textual Similarity Calculation</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    We calculate textual similarity using <a href="https://en.wikipedia.org/wiki/Tf%E2%80%93idf" target="_blank" rel="noopener">TF-IDF (Term Frequency-Inverse Document Frequency)</a> vectorization followed by cosine similarity measurement.
+                </p>
+                <p><strong>Fields used:</strong></p>
+                <ul>
+                    <li><code>title</code> — The item's title</li>
+                    <li><code>concepts</code> — Subject headings and thematic tags</li>
+                    <li><code>description</code> — Full text description of the item</li>
+                    <li><code>place_label</code> — Textual place names (e.g., "Paris", "Dublin")</li>
+                </ul>
+                <p>
+                    These four text fields are concatenated into a single document per item. TF-IDF assigns weights to words based on their frequency within each document and rarity across all documents, emphasizing distinctive terms. The cosine similarity between two TF-IDF vectors measures how similar their textual content is, ranging from 0 (completely different) to 1 (identical).
+                </p>
+                <p class="formula">
+                    <em>S<sub>text</sub> = cosine_similarity(TF-IDF<sub>item1</sub>, TF-IDF<sub>item2</sub>)</em>
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Temporal Proximity Calculation</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    Temporal proximity measures how close two items are in time using an exponential decay kernel. Items from the same year have maximum similarity (1.0), while similarity decreases exponentially as the time gap increases.
+                </p>
+                <p><strong>Field used:</strong></p>
+                <ul>
+                    <li><code>year</code> — The main year associated with the item</li>
+                </ul>
+                <p class="note">
+                    <strong>Note:</strong> While items have <code>date_begin</code> and <code>date_end</code> fields in their metadata, these are <em>not currently used</em> in the temporal proximity calculation. Only the primary <code>year</code> field is considered.
+                </p>
+                <p>
+                    The calculation uses a bandwidth of <strong>25 years</strong>, meaning items 25 years apart retain about 37% similarity (e<sup>-1</sup>), while items 50 years apart have about 14% similarity (e<sup>-2</sup>).
+                </p>
+                <p class="formula">
+                    <em>S<sub>date</sub> = exp(-|year<sub>1</sub> - year<sub>2</sub>| / 25)</em>
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Spatial Proximity Calculation</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    Spatial proximity is a <strong>geographical/geometrical measurement</strong>, not a textual comparison. It calculates the physical distance between two items' coordinates on Earth using the <a href="https://en.wikipedia.org/wiki/Haversine_formula" target="_blank" rel="noopener">Haversine formula</a>, then applies a Gaussian kernel to convert distance into similarity.
+                </p>
+                <p><strong>Fields used:</strong></p>
+                <ul>
+                    <li><code>place_lat</code> — Latitude coordinate</li>
+                    <li><code>place_lon</code> — Longitude coordinate</li>
+                </ul>
+                <p>
+                    The Haversine formula calculates the great-circle distance between two points on a sphere, accounting for Earth's curvature. This gives us the actual distance in kilometers between two locations.
+                </p>
+                <p>
+                    A Gaussian kernel with a bandwidth of <strong>400 km</strong> transforms this distance into a similarity score. Items at the same location have maximum similarity (1.0), items 400 km apart retain about 37% similarity, and items 800 km apart have about 14% similarity.
+                </p>
+                <p class="note">
+                    <strong>Important:</strong> While <code>place_label</code> (textual place names) and <code>country</code> appear in the metadata, they are <em>not used for spatial proximity</em>. Only the numerical coordinates determine this measurement. Place names do contribute to <em>textual similarity</em> instead.
+                </p>
+                <p class="formula">
+                    <em>S<sub>place</sub> = exp(-distance<sub>km</sub> / 400)</em><br>
+                    <em>where distance<sub>km</sub> = haversine(lat<sub>1</sub>, lon<sub>1</sub>, lat<sub>2</sub>, lon<sub>2</sub>)</em>
+                </p>
+            </div>
+        </details>
+
+        <div class="final-formula">
+            <strong>Final "Good Neighbor Index":</strong>
+            <p class="formula main">
+                <em>G = 0.6 × S<sub>text</sub> + 0.2 × S<sub>date</sub> + 0.2 × S<sub>place</sub></em>
+            </p>
+            <p class="formula-note">
+                These weights (60%, 20%, 20%) can be adjusted by users to explore the archive through different relational lenses, emphasizing textual, temporal, or spatial connections as desired.
+            </p>
+        </div>
+    </div>
+
     <p>
         Now let's see how these edges connect nodes in practice. The visualization below shows the same 50 nodes, but this time with their relationships visible as connecting lines. The nodes are colored according to their <strong>community clusters</strong>, which are automatically detected using a label propagation algorithm. Unlike traditional archival hierarchies based on collections or provenance, these clusters emerge organically from the relational structure of the network itself. <strong>Click on any edge</strong> (connection line) to see its detailed similarity breakdown:
     </p>
@@ -537,6 +629,149 @@
         text-align: center;
         font-size: 1.2rem;
         overflow-x: auto;
+    }
+
+    .methodology-callouts {
+        margin: 2rem 0;
+    }
+
+    .methodology-detail {
+        margin-bottom: 1rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .methodology-detail:hover {
+        border-color: #0066cc;
+        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+    }
+
+    .methodology-detail summary {
+        padding: 1rem 1.5rem;
+        background-color: #f5f5f5;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.05rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .methodology-detail summary:hover {
+        background-color: #e8f4ff;
+    }
+
+    .methodology-detail[open] summary {
+        background-color: #e8f4ff;
+        border-bottom: 2px solid #0066cc;
+    }
+
+    .expand-icon {
+        color: #0066cc;
+        font-size: 0.8rem;
+        transition: transform 0.3s ease;
+    }
+
+    .methodology-detail[open] .expand-icon {
+        transform: rotate(90deg);
+    }
+
+    .detail-content {
+        padding: 1.5rem;
+        background-color: white;
+        line-height: 1.6;
+    }
+
+    .detail-content p {
+        margin-bottom: 1rem;
+    }
+
+    .detail-content ul {
+        margin: 1rem 0;
+        padding-left: 2rem;
+    }
+
+    .detail-content li {
+        margin-bottom: 0.5rem;
+    }
+
+    .detail-content code {
+        background-color: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9rem;
+        color: #d63384;
+    }
+
+    .detail-content a {
+        color: #0066cc;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dashed #0066cc;
+    }
+
+    .detail-content a:hover {
+        border-bottom-style: solid;
+    }
+
+    .formula {
+        background-color: #f9f9f9;
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #0066cc;
+        margin: 1rem 0;
+        font-family: 'Georgia', serif;
+    }
+
+    .formula em {
+        font-style: italic;
+        color: #004499;
+    }
+
+    .note {
+        background-color: #fff9e6;
+        border-left: 4px solid #ffc107;
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+        font-size: 0.95rem;
+    }
+
+    .note strong {
+        color: #856404;
+    }
+
+    .final-formula {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        color: white;
+    }
+
+    .final-formula strong {
+        display: block;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+    }
+
+    .formula.main {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-left: 4px solid white;
+        font-size: 1.1rem;
+    }
+
+    .formula.main em {
+        color: white;
+    }
+
+    .formula-note {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        opacity: 0.95;
+        line-height: 1.6;
     }
 
     .graph-container {

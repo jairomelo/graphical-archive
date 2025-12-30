@@ -1,8 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { page } from '$app/state';
 	
 	let { children } = $props();
+
+	let currentPath = page.url.pathname;
 </script>
 
 <svelte:head>
@@ -17,7 +20,7 @@
       Graphical Archive
     </a>
     <nav class="flex items-center gap-6">
-      <a href="/about" class="text-sm text-gray-600 hover:text-gray-900 transition-colors">About</a>
+      <a href="/about" class="text-sm text-gray-600 hover:text-gray-900 transition-colors" class:active={currentPath === '/about'}>How to read</a>
     </nav>
   </div>
 </header>
@@ -51,7 +54,7 @@
           <li>
             <a href="/about" class="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
               <i class="bi bi-info-circle"></i>
-              About
+              How to read
             </a>
           </li>
           <li>

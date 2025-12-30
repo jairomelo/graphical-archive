@@ -7,6 +7,12 @@
   padding-left: 1rem;
 }
 
+.active {
+		color: #111827 !important; 
+		font-weight: 600;
+		padding-bottom: 2px;
+	}
+
 .grid { display: grid; }
   
   /* Fade-in animation for accordion content */

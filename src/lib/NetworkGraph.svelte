@@ -34,6 +34,7 @@
   export let neighbors: Record<string, any[]> = {};
   export let onNodeClick: (id: string) => void = () => {};
   export let onNodeHover: (id: string | null) => void = () => {};
+  export let onEdgeClick: (sourceId: string, targetId: string) => void = () => {};
   export let selectedId: string | null = null;
   export let maxNodes: number = 500;
   export let minScore: number = 0.02;
@@ -344,7 +345,24 @@
       .join('line')
       .attr('stroke', '#999')
       .attr('stroke-opacity', (d: GraphLink) => 0.2 + d.score * 0.6)
-      .attr('stroke-width', (d: GraphLink) => Math.max(0.5, d.score * 3));
+      .attr('stroke-width', (d: GraphLink) => Math.max(0.5, d.score * 3))
+      .attr('cursor', 'pointer')
+      .on('click', (event: any, d: GraphLink) => {
+        event.stopPropagation();
+        const sourceId = typeof d.source === 'string' ? d.source : d.source.id;
+        const targetId = typeof d.target === 'string' ? d.target : d.target.id;
+        onEdgeClick(sourceId, targetId);
+      })
+      .on('mouseover', function(this: SVGLineElement) {
+        d3.select(this)
+          .attr('stroke', '#0066cc')
+          .attr('stroke-width', (d: any) => Math.max(2, d.score * 4));
+      })
+      .on('mouseout', function(this: SVGLineElement) {
+        d3.select(this)
+          .attr('stroke', '#999')
+          .attr('stroke-width', (d: any) => Math.max(0.5, d.score * 3));
+      });
 
     // Create node elements
     const node = g.append('g')

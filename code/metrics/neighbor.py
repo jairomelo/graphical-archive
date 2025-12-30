@@ -44,21 +44,75 @@ except Exception:
 S_text = cosine_similarity(X)
 
 #### Build temporal similarity #####
-years = df['year'].to_numpy()
 n = len(df)
-
 S_date = np.zeros((n,n), dtype=float)
 
 # exponential kernel with 25 years bandwidth
 bandwidth = 25.0
+
+def get_temporal_range(row):
+    """
+    Extract temporal range for an item, using year, date_begin, and date_end.
+    Returns (min_year, max_year) tuple or (None, None) if no temporal info available.
+    """
+    year = row['year']
+    date_begin = row['date_begin']
+    date_end = row['date_end']
+    
+    # Priority 1: Use exact year if available
+    if not pd.isna(year):
+        return (year, year)
+    
+    # Priority 2: Use date range if both available
+    if not pd.isna(date_begin) and not pd.isna(date_end):
+        return (date_begin.year, date_end.year)
+    
+    # Priority 3: Use single date as point
+    if not pd.isna(date_begin):
+        return (date_begin.year, date_begin.year)
+    
+    if not pd.isna(date_end):
+        return (date_end.year, date_end.year)
+    
+    # No temporal information available
+    return (None, None)
+
+def calculate_temporal_distance(t_min_i, t_max_i, t_min_j, t_max_j):
+    """
+    Calculate minimum distance between two temporal ranges.
+    Returns 0 if ranges overlap.
+    """
+    if t_max_i < t_min_j:
+        # Range i is entirely before range j
+        return t_min_j - t_max_i
+    elif t_max_j < t_min_i:
+        # Range j is entirely before range i
+        return t_min_i - t_max_j
+    else:
+        # Ranges overlap
+        return 0
+
+# Calculate temporal similarity matrix with range awareness
 for i in range(n):
-    yi = years[i]
-    if np.isnan(yi):
-        continue
-    yj = years
-    mask = ~np.isnan(yj)
-    delta = np.abs(yi - yj[mask])
-    S_date[i, np.where(mask)[0]] = np.exp(-delta / bandwidth)
+    t_min_i, t_max_i = get_temporal_range(df.iloc[i])
+    
+    if t_min_i is None:
+        continue  # No temporal info for item i
+    
+    for j in range(i, n):
+        t_min_j, t_max_j = get_temporal_range(df.iloc[j])
+        
+        if t_min_j is None:
+            continue  # No temporal info for item j
+        
+        # Calculate minimum distance between temporal ranges
+        distance = calculate_temporal_distance(t_min_i, t_max_i, t_min_j, t_max_j)
+        
+        # Apply exponential kernel
+        similarity = np.exp(-distance / bandwidth)
+        
+        S_date[i, j] = similarity
+        S_date[j, i] = similarity  # Symmetric matrix
 
 #### Define spatial proximity #####
 

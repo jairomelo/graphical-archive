@@ -1,11 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { items, edges, selectedId, neighborsOfSelected, filters, byId, userInteractions, userSimilarity } from '$lib/stores';
+  import { items, edges, selectedId, filters, byId, userInteractions, userSimilarity } from '$lib/stores';
   import NetworkGraph from '$lib/NetworkGraph.svelte';
   import { browser } from '$app/environment';
   export let data;
-
-  import favicon from '$lib/assets/favicon.svg';
 
   let networkGraph: any;
   let panelOpen = true;

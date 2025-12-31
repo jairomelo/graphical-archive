@@ -29,3 +29,7 @@ vite.config.ts.timestamp-*
 
 # Paraglide
 src/lib/paraglide
+
+# Temporary scripts
+code/metrics/explore.py
+code/metrics/compare_neighbors.py

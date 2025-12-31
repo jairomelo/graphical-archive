@@ -304,6 +304,9 @@
                 <p>
                     The Haversine formula calculates the great-circle distance between two points on a sphere, accounting for Earth's curvature. This gives us the actual distance in kilometers between two locations.
                 </p>
+                <p class="note">
+                    <strong>Coordinate enrichment:</strong> When coordinates are missing from the original metadata, we enrich them using a custom gazetteer that maps place names (like "Spain", "United States of America", "París") to their authoritative geographic coordinates from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a>. This ensures spatial relationships can be calculated even when source data is incomplete.
+                </p>
                 <p>
                     A Gaussian kernel with a bandwidth of <strong>400 km</strong> transforms this distance into a similarity score. Items at the same location have maximum similarity (1.0), items 400 km apart retain about 37% similarity, and items 800 km apart have about 14% similarity.
                 </p>

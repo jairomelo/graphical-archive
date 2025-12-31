@@ -33,6 +33,15 @@
     let neighbors: Record<string, any[]> = {};
     let edgesMap: Map<string, any> = new Map();
 
+    // Interactive demo state
+    let demoSelectedItem: any = null;
+    let demoClickedItems: Set<string> = new Set();
+    let demoWeights = { text: 50, date: 20, place: 20, user: 10 };
+    let demoRecommendations: any[] = [];
+    let demoAllRecommendations: any[] = [];
+    let demoDisplayCount: number = 10;
+    let initialPositions: Map<string, number> = new Map();
+
     // Normalize neighbors data and build edges map
     function normalizeNeighbors(n: any) {
         if (Array.isArray(n)) return n;
@@ -80,6 +89,128 @@
     function formatArrayField(field: any): string {
         if (Array.isArray(field)) return field.join(', ');
         return field || 'N/A';
+    }
+
+    // Demo functions
+    function initializeDemo() {
+        // Pick a random starting item
+        const itemsArray = $items.filter(item => 
+            item.thumbnail && 
+            data.neighbors[item.id] && 
+            data.neighbors[item.id].length >= 5
+        );
+        if (itemsArray.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(itemsArray.length, 50));
+            demoSelectedItem = itemsArray[randomIndex];
+            updateDemoRecommendations();
+        }
+    }
+
+    function calculateUserSimilarity(itemId: string): number {
+        if (demoClickedItems.size === 0) return 0;
+        
+        // Simple co-occurrence: if item was clicked, high score
+        if (demoClickedItems.has(itemId)) return 1.0;
+        
+        // If item shares neighbors with clicked items, medium score
+        const itemNeighbors = new Set(
+            (data.neighbors[itemId] || []).map((n: any) => n.id)
+        );
+        
+        let sharedCount = 0;
+        demoClickedItems.forEach(clickedId => {
+            if (itemNeighbors.has(clickedId)) sharedCount++;
+        });
+        
+        return sharedCount > 0 ? 0.3 + (sharedCount * 0.2) : 0;
+    }
+
+    function updateDemoRecommendations() {
+        if (!demoSelectedItem) return;
+        
+        const baseNeighbors = data.neighbors[demoSelectedItem.id] || [];
+        
+        // Recalculate scores with current weights
+        const scoredNeighbors = baseNeighbors.map((neighbor: any) => {
+            const userScore = calculateUserSimilarity(neighbor.id);
+            const weightedScore = 
+                demoWeights.text * neighbor.S_text +
+                demoWeights.date * neighbor.S_date +
+                demoWeights.place * neighbor.S_place +
+                demoWeights.user * userScore;
+            
+            return {
+                ...neighbor,
+                weightedScore,
+                userScore,
+                item: $items.find(i => i.id === neighbor.id)
+            };
+        });
+        
+        // Sort by weighted score and store all
+        demoAllRecommendations = scoredNeighbors
+            .filter(n => n.item)
+            .sort((a, b) => b.weightedScore - a.weightedScore);
+        
+        // Take the top N based on display count
+        demoRecommendations = demoAllRecommendations.slice(0, demoDisplayCount);
+        
+        // Store initial positions if this is the first recommendation
+        if (initialPositions.size === 0 && demoAllRecommendations.length > 0) {
+            demoAllRecommendations.forEach((rec, index) => {
+                initialPositions.set(rec.id, index + 1);
+            });
+        }
+    }
+
+    function handleDemoItemClick(itemId: string) {
+        demoClickedItems.add(itemId);
+        demoClickedItems = demoClickedItems;
+        
+        // Increase user weight by 3 percentage points (max 40%)
+        if (demoWeights.user < 40) {
+            const increment = 3;
+            demoWeights.user += increment;
+            
+            // Proportionally reduce others (split reduction across 3 vectors)
+            const reduction = increment / 3;
+            demoWeights.text = Math.max(10, demoWeights.text - reduction);
+            demoWeights.date = Math.max(5, demoWeights.date - reduction);
+            demoWeights.place = Math.max(5, demoWeights.place - reduction);
+        }
+        
+        updateDemoRecommendations();
+    }
+
+    function handleWeightChange() {
+        // Normalize weights to sum to 1.0
+        const sum = demoWeights.text + demoWeights.date + demoWeights.place + demoWeights.user;
+        if (sum > 0) {
+            demoWeights.text /= sum;
+            demoWeights.date /= sum;
+            demoWeights.place /= sum;
+            demoWeights.user /= sum;
+        }
+        updateDemoRecommendations();
+    }
+
+    function handleDisplayCountChange() {
+        demoRecommendations = demoAllRecommendations.slice(0, demoDisplayCount);
+    }
+
+    function resetDemo() {
+        demoClickedItems.clear();
+        demoClickedItems = demoClickedItems;
+        initialPositions.clear();
+        initialPositions = initialPositions;
+        demoWeights = { text: 50, date: 20, place: 20, user: 10 };
+        initializeDemo();
+    }
+
+    function formatTitle(item: any): string {
+        if (!item) return 'Unknown';
+        if (Array.isArray(item.title)) return item.title[0] || 'Unknown';
+        return item.title || 'Unknown';
     }
 
     // BibTeX references
@@ -167,6 +298,7 @@
         }
         
         loadReferences();
+        initializeDemo();
     });
 
 </script>
@@ -226,7 +358,7 @@
     <div class="vectors-matrix" bind:this={vectorMatrix}></div>
 
     <p>
-        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The current implementation uses: <strong>60% textual similarity</strong>, <strong>20% temporal proximity</strong>, and <strong>20% spatial proximity</strong>.
+        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The pre-computed weights reserve space for user interactions: <strong>50% textual similarity</strong>, <strong>20% temporal proximity</strong>, <strong>20% spatial proximity</strong>, and <strong>10% user interaction</strong> (initially zero, grows with browsing behavior).
     </p>
 
     <div class="methodology-callouts">
@@ -323,10 +455,10 @@
         <div class="final-formula">
             <strong>Final "Good Neighbor Index":</strong>
             <p class="formula main">
-                <em>G = 0.6 × S<sub>text</sub> + 0.2 × S<sub>date</sub> + 0.2 × S<sub>place</sub></em>
+                <em>G = 0.5 × S<sub>text</sub> + 0.2 × S<sub>date</sub> + 0.2 × S<sub>place</sub> + 0.1 × S<sub>user</sub></em>
             </p>
             <p class="formula-note">
-                These weights (60%, 20%, 20%) can be adjusted by users to explore the archive through different relational lenses, emphasizing textual, temporal, or spatial connections as desired.
+                These weights (50%, 20%, 20%, 10%) are pre-allocated to ensure the formula always sums to 1.0. The user interaction weight starts at 10% with S<sub>user</sub>=0 (no browsing data yet), but can grow as visitors explore the archive. Users can dynamically adjust these weights to explore the archive through different relational lenses, emphasizing textual, temporal, spatial, or behavioral connections as desired.
             </p>
         </div>
     </div>
@@ -518,7 +650,8 @@
                 
                 <p class="score-explanation">
                     This edge represents a weighted combination of the three similarity vectors. The combined score is calculated as:
-                    <em>0.6 × Textual + 0.2 × Temporal + 0.2 × Spatial</em>
+                    <em>0.5 × Textual + 0.2 × Temporal + 0.2 × Spatial + 0.1 × User</em>
+                    <br>(User interactions not shown here as this is pre-computed data)
                 </p>
             </div>
         </div>
@@ -548,13 +681,13 @@
             </summary>
             <div class="detail-content">
                 <p>
-                    As you navigate the archive—viewing items, bookmarking records, and exploring relationships—the system tracks which items you engage with. It then calculates similarity between items based on <strong>co-occurrence patterns</strong>: items that appear together in your browsing session are considered related.
+                    As visitors navigate the archive—viewing items, bookmarking records, and exploring relationships—the system tracks which items they engage with. It then calculates similarity between items based on <strong>co-occurrence patterns</strong>: items that appear together in a browsing session are considered related.
                 </p>
                 <p><strong>Tracked interactions:</strong></p>
                 <ul>
-                    <li><code>Views</code> — Items you've clicked on or examined in detail</li>
-                    <li><code>Bookmarks</code> — Items you've explicitly saved for later reference</li>
-                    <li><code>View sequence</code> — The temporal order of your exploration (sliding window)</li>
+                    <li><code>Views</code> — Items clicked on or examined in detail</li>
+                    <li><code>Bookmarks</code> — Items explicitly saved for later reference</li>
+                    <li><code>View sequence</code> — The temporal order of exploration (sliding window)</li>
                 </ul>
                 <p>
                     The algorithm uses a <strong>sliding window approach</strong> for views: items viewed close together in time (within 5 items) are considered co-occurring. For bookmarks, all pairs of bookmarked items are treated as related.
@@ -563,7 +696,7 @@
                     <em>S<sub>user</sub>(i, j) = 0.4 × co-view<sub>normalized</sub>(i, j) + 0.6 × co-bookmark<sub>normalized</sub>(i, j)</em>
                 </p>
                 <p>
-                    This creates a <strong>collaborative filtering effect</strong> but based on your individual session rather than aggregate user data. Items you've engaged with become more strongly connected, influencing which neighbors are suggested for subsequent items you explore.
+                    This creates a <strong>collaborative filtering effect</strong> based on individual sessions rather than aggregate user data. Items a visitor has engaged with become more strongly connected, influencing which neighbors are suggested for subsequent items they explore.
                 </p>
             </div>
         </details>
@@ -575,23 +708,23 @@
             </summary>
             <div class="detail-content">
                 <p class="note">
-                    <strong>Your data stays private:</strong> All interaction tracking is <em>session-based only</em>. Your browsing history is stored exclusively in your browser's <code>sessionStorage</code>, which is automatically cleared when you close the tab or browser window.
+                    <strong>Privacy-first architecture:</strong> All interaction tracking is <em>session-based only</em>. Browsing history is stored exclusively in the browser's <code>sessionStorage</code>, which is automatically cleared when the tab or browser window is closed.
                 </p>
                 <p>
-                    <strong>What this means:</strong>
+                    <strong>Implementation characteristics:</strong>
                 </p>
                 <ul>
                     <li>No data is sent to external servers or databases</li>
                     <li>No cookies are set for tracking across sessions</li>
-                    <li>Your exploration patterns are never stored permanently</li>
-                    <li>Other users never see your personalized network</li>
+                    <li>Exploration patterns are never stored permanently</li>
+                    <li>Each visitor's personalized network remains isolated</li>
                     <li>Closing the browser resets all interactions to zero</li>
                 </ul>
                 <p>
                     <strong>Trade-off:</strong> Because interaction data is session-only, the user similarity vector cannot "train" or permanently modify the archive's network structure. Each visit starts fresh. This architectural choice prioritizes privacy over personalization persistence.
                 </p>
                 <p>
-                    If you want to reset your current session's interaction data at any time, simply refresh the page or close and reopen your browser tab.
+                    Visitors can reset their current session's interaction data at any time by refreshing the page or closing and reopening the browser tab.
                 </p>
             </div>
         </details>
@@ -603,13 +736,13 @@
             </summary>
             <div class="detail-content">
                 <p>
-                    On the main archive interface, you can adjust the relative weights of all four similarity vectors using interactive sliders. This allows you to explore the archive through different lenses:
+                    The main archive interface provides interactive sliders to adjust the relative weights of all four similarity vectors. This enables exploration of the archive through different analytical lenses:
                 </p>
                 <ul>
                     <li><strong>High textual weight</strong> → Prioritize items with similar topics, keywords, and descriptions</li>
                     <li><strong>High temporal weight</strong> → Emphasize items from similar time periods</li>
                     <li><strong>High spatial weight</strong> → Focus on geographic clustering</li>
-                    <li><strong>High user interaction weight</strong> → Surface items related to your browsing patterns</li>
+                    <li><strong>High user interaction weight</strong> → Surface items related to browsing patterns</li>
                 </ul>
                 <p>
                     The final "Good Neighbor Index" becomes:
@@ -619,11 +752,171 @@
                     <em>where w<sub>text</sub> + w<sub>date</sub> + w<sub>place</sub> + w<sub>user</sub> = 1.0</em>
                 </p>
                 <p>
-                    As you adjust these weights, the network visualization updates in real-time, reshaping the graph to reflect your chosen balance between computational similarity and personal exploration patterns.
+                    When weights are adjusted, the network visualization updates in real-time, reshaping the graph to reflect the chosen balance between computational similarity and personal exploration patterns.
                 </p>
             </div>
         </details>
     </div>
+
+    <h3>Interactive Demo: See It in Action</h3>
+
+    <p>
+        The demonstration below shows how user interactions dynamically reshape item recommendations. Click on recommended items to simulate browsing behavior, and watch how the user interaction weight increases and the recommendations adapt in real-time.
+    </p>
+
+    {#if demoSelectedItem}
+        <div class="demo-container">
+            <div class="demo-selected">
+                <div class="demo-thumbnail">
+                    {#if demoSelectedItem.thumbnail}
+                        <img src={demoSelectedItem.thumbnail} alt={formatTitle(demoSelectedItem)} />
+                    {:else}
+                        <div class="no-thumbnail">No image</div>
+                    {/if}
+                </div>
+                <div class="demo-details">
+                    <h4>{formatTitle(demoSelectedItem)}</h4>
+                    <p class="demo-meta">
+                        {demoSelectedItem.year || 'Unknown year'} • {demoSelectedItem.country || 'Unknown location'}
+                    </p>
+                    <p class="demo-instruction">
+                        💡 Click on recommended items below to simulate browsing. The user interaction weight will increase automatically.
+                    </p>
+                </div>
+            </div>
+
+            <div class="demo-weights">
+                <h5>Similarity Vector Weights</h5>
+                <div class="weight-controls">
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Textual</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.text}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.text.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Temporal</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.date}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.date.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Spatial</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.place}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.place.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item user-weight">
+                        <label>
+                            <span class="weight-label">User Interaction</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.user}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value highlight">{demoWeights.user.toFixed(0)}%</span>
+                        </label>
+                        <span class="weight-note">↑ Increases as you click items</span>
+                    </div>
+                </div>
+                <button class="reset-button" on:click={resetDemo}>Reset Demo</button>
+            </div>
+
+            <div class="demo-recommendations">
+                <div class="recommendations-header">
+                    <h5>Recommended Neighbors</h5>
+                    <div class="display-control">
+                        <label>
+                            <span class="control-label">Show items: <strong>{demoDisplayCount}</strong></span>
+                            <input 
+                                type="range" 
+                                min="5" 
+                                max="10" 
+                                bind:value={demoDisplayCount}
+                                on:input={handleDisplayCountChange}
+                                step="1"
+                                class="count-slider"
+                            />
+                        </label>
+                    </div>
+                </div>
+                <div class="recommendations-grid">
+                    {#each demoRecommendations as rec, i}
+                        <div 
+                            class="recommendation-card"
+                            class:clicked={demoClickedItems.has(rec.id)}
+                            class:user-influenced={rec.userScore > 0}
+                            on:click={() => handleDemoItemClick(rec.id)}
+                            role="button"
+                            tabindex="0"
+                        >
+                            {#if rec.item.thumbnail}
+                                <img src={rec.item.thumbnail} alt={formatTitle(rec.item)} />
+                            {:else}
+                                <div class="card-no-thumbnail">No image</div>
+                            {/if}
+                            <div class="card-info">
+                                <div class="card-title">{formatTitle(rec.item)}</div>
+                                <div class="card-score">
+                                    Score: {(rec.weightedScore).toFixed(0)}%
+                                    {#if rec.userScore > 0}
+                                        <span class="user-badge" title="Boosted by user interactions">👤</span>
+                                    {/if}
+                                </div>
+                                {#if initialPositions.has(rec.id) && initialPositions.get(rec.id) !== (i + 1)}
+                                    <div class="position-indicator" title="Initial position: #{initialPositions.get(rec.id)}">
+                                        <span class="position-badge">was #{initialPositions.get(rec.id)}</span>
+                                        {#if (initialPositions.get(rec.id) ?? 0) > (i + 1)}
+                                            <span class="position-arrow up">↑</span>
+                                        {:else}
+                                            <span class="position-arrow down">↓</span>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+                <p class="demo-legend">
+                    <span class="legend-item"><span class="legend-badge user-influenced-badge"></span> Influenced by your interactions</span>
+                    <span class="legend-item"><span class="legend-badge clicked-badge"></span> Already viewed</span>
+                </p>
+            </div>
+        </div>
+    {:else}
+        <p class="instruction">Loading interactive demo...</p>
+    {/if}
+
+    <p>
+        This four-dimensional similarity space allows for rich, multi-faceted exploration of archival relationships—combining objective metadata analysis with subjective browsing behavior, while maintaining complete privacy and session-level personalization.
+    </p>
 
     <h2>Navigating the Archive</h2>
     <p>
@@ -1142,5 +1435,374 @@
 
     .reference-content :global(em) {
         font-style: italic;
+    }
+
+    /* Interactive Demo Styles */
+    .demo-container {
+        margin: 2rem 0;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        border: 2px solid #e0e0e0;
+    }
+
+    .demo-selected {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .demo-thumbnail {
+        flex-shrink: 0;
+        width: 150px;
+        height: 150px;
+        border-radius: 6px;
+        overflow: hidden;
+        background-color: #f0f0f0;
+    }
+
+    .demo-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        margin: 0;
+        box-shadow: none;
+    }
+
+    .no-thumbnail, .card-no-thumbnail {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #e0e0e0;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    .demo-details {
+        flex: 1;
+    }
+
+    .demo-details h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.3rem;
+        color: #333;
+    }
+
+    .demo-meta {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .demo-instruction {
+        background-color: #fff9e6;
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+        font-size: 0.95rem;
+        color: #856404;
+        margin: 0;
+    }
+
+    .demo-weights {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: white;
+        border-radius: 8px;
+    }
+
+    .demo-weights h5 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        color: #333;
+    }
+
+    .weight-controls {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .weight-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .weight-item label {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .weight-label {
+        font-weight: 600;
+        color: #555;
+        min-width: 120px;
+    }
+
+    .weight-item input[type="range"] {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: #e0e0e0;
+        outline: none;
+        -webkit-appearance: none;
+    }
+
+    .weight-item input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0066cc;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .weight-item input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0066cc;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .weight-value {
+        font-weight: 700;
+        color: #0066cc;
+        min-width: 50px;
+        text-align: right;
+    }
+
+    .weight-value.highlight {
+        color: #ff6b35;
+        font-size: 1.1rem;
+    }
+
+    .weight-item.user-weight {
+        padding-top: 0.5rem;
+        border-top: 2px solid #e0e0e0;
+    }
+
+    .weight-note {
+        font-size: 0.85rem;
+        color: #ff6b35;
+        font-style: italic;
+        margin-left: 120px;
+    }
+
+    .reset-button {
+        margin-top: 1rem;
+        padding: 0.75rem 1.5rem;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .reset-button:hover {
+        background-color: #c82333;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    .demo-recommendations {
+        padding: 1.5rem;
+        background-color: white;
+        border-radius: 8px;
+    }
+
+    .recommendations-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .recommendations-header h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #333;
+    }
+
+    .display-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .display-control label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .control-label strong {
+        color: #0066cc;
+        font-weight: 600;
+    }
+
+    .count-slider {
+        width: 120px;
+        height: 4px;
+        cursor: pointer;
+    }
+
+    .recommendations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+        max-height: 800px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .recommendations-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .recommendation-card {
+        background-color: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .recommendation-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0, 102, 204, 0.2);
+        border-color: #0066cc;
+    }
+
+    .recommendation-card.clicked {
+        border-color: #28a745;
+        background-color: #e8f5e9;
+    }
+
+    .recommendation-card.user-influenced {
+        border-color: #ff6b35;
+        box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    }
+
+    .recommendation-card img {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        margin: 0;
+        box-shadow: none;
+    }
+
+    .card-info {
+        padding: 0.75rem;
+    }
+
+    .card-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-score {
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .user-badge {
+        font-size: 1rem;
+    }
+
+    .position-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+        font-size: 0.7rem;
+        color: #888;
+    }
+
+    .position-badge {
+        background-color: rgba(0, 102, 204, 0.1);
+        border: 1px solid rgba(0, 102, 204, 0.3);
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        font-weight: 500;
+    }
+
+    .position-arrow {
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+
+    .position-arrow.up {
+        color: #28a745;
+    }
+
+    .position-arrow.down {
+        color: #dc3545;
+    }
+
+    .demo-legend {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-badge {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid;
+    }
+
+    .user-influenced-badge {
+        border-color: #ff6b35;
+        background-color: rgba(255, 107, 53, 0.1);
+    }
+
+    .clicked-badge {
+        border-color: #28a745;
+        background-color: #e8f5e9;
     }
 </style>

@@ -41,6 +41,7 @@
   // Personalization inputs
   // Map key format: "idA|idB" with ids sorted lexicographically
   export let userSimilarity: Map<string, number> = new Map();
+  export let viewedItems: Set<string> = new Set();
   export let textWeight: number = 0.6;
   export let dateWeight: number = 0.2;
   export let placeWeight: number = 0.2;
@@ -376,9 +377,9 @@
     // Add circles to nodes
     node.append('circle')
       .attr('r', (d: GraphNode) => Math.max(2.5, Math.min(8, 2.5 + Math.sqrt(d.degree) * 0.5)))
-      .attr('fill', (d: GraphNode) => colorScheme[d.cluster % colorScheme.length])
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1.5)
+      .attr('fill', (d: GraphNode) => viewedItems.has(d.id) ? '#d4edda' : colorScheme[d.cluster % colorScheme.length])
+      .attr('stroke', (d: GraphNode) => viewedItems.has(d.id) ? '#28a745' : '#fff')
+      .attr('stroke-width', (d: GraphNode) => viewedItems.has(d.id) ? 2 : 1.5)
       .on('click', (event: any, d: GraphNode) => {
         event.stopPropagation();
         onNodeClick(d.id);

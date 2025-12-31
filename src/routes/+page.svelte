@@ -9,7 +9,8 @@
   let panelOpen = true;
   let hoveredId: string | null = null;
   let hoveredNeighbors: Array<any> = [];
-  let NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 };
+  let NEIGHBOR_WEIGHTS = { text: 0.5, date: 0.2, place: 0.2, user: 0.1 };
+  let topNeighborsCount = 10;
   let maxNodes = 500;
   $: currentId = hoveredId ?? $selectedId ?? null;
   let hoverTimer: ReturnType<typeof setTimeout> | null = null;
@@ -157,7 +158,7 @@
       }));
   }
 
-  $: hoveredNeighbors = getNeighborsFor(currentId, 10);
+  $: hoveredNeighbors = getNeighborsFor(currentId, topNeighborsCount);
 
 </script>
 
@@ -212,7 +213,7 @@
           <h3 class="text-sm font-semibold text-gray-700">Similarity Weights</h3>
           <button
             class="px-3 py-1 text-xs rounded border bg-white hover:bg-gray-100 text-gray-700"
-            on:click|stopPropagation={() => { NEIGHBOR_WEIGHTS = { text: 0.6, date: 0.2, place: 0.2, user: 0.5 }; }}
+            on:click|stopPropagation={() => { NEIGHBOR_WEIGHTS = { text: 0.5, date: 0.2, place: 0.2, user: 0.1 }; }}
             title="Reset weights to default values">
             Reset Weights
           </button>
@@ -296,7 +297,29 @@
           />
         </div>
       </div>
-        <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated: G = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·Text + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·Date + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·Place + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·User</p>
+        <p class="text-[10px] text-gray-500 mt-2">Adjust weights to control how similarity scores are calculated. Weights are automatically normalized: G<sub>ij</sub> = α·S<sub>text</sub>(i,j) + β·S<sub>date</sub>(i,j) + γ·S<sub>place</sub>(i,j) + δ·S<sub>user</sub>(i,j) where α+β+γ+δ=1.0</p>
+      </div>
+    </details>
+
+    <!-- Top Neighbors Count Slider -->
+    <details class="border rounded p-3 space-y-2 bg-white">
+      <summary class="font-semibold text-sm cursor-pointer">Neighbor Display Count</summary>
+      <div class="space-y-2 pt-2">
+        <div class="space-y-1">
+          <label class="flex items-center justify-between text-xs text-gray-600">
+            <span>Top neighbors to show</span>
+            <span class="font-mono font-semibold">{topNeighborsCount}</span>
+          </label>
+          <input 
+            type="range" 
+            min="10" 
+            max="50" 
+            step="5" 
+            bind:value={topNeighborsCount}
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+        </div>
+        <p class="text-[10px] text-gray-500">Control how many top neighbors are displayed when hovering over an item in the network graph.</p>
       </div>
     </details>
 
@@ -334,6 +357,7 @@
             items={itemsForNetwork}
             neighbors={data.neighbors}
             userSimilarity={$userSimilarity}
+            viewedItems={$userInteractions.views}
             textWeight={NEIGHBOR_WEIGHTS.text}
             dateWeight={NEIGHBOR_WEIGHTS.date}
             placeWeight={NEIGHBOR_WEIGHTS.place}
@@ -379,11 +403,18 @@
                 <li class="p-0">
                   <button
                     type="button"
-                    class="w-full text-left p-3 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 {$selectedId === it.id ? 'bg-blue-50' : ''}"
+                    class="w-full text-left p-3 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 {$selectedId === it.id ? 'bg-blue-50' : ''} {$userInteractions.views.has(it.id) ? 'bg-green-50' : ''}"
                     on:click={() => { selectedId.set(it.id); if (networkGraph) networkGraph.centerOnNode?.(it.id); }}
                   >
-                    <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
-                    <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium">{Array.isArray(it.title) ? it.title[0] : it.title}</div>
+                        <div class="text-xs text-gray-500">{it.year} · {(it.language && it.language.join(', ')) || ''}</div>
+                      </div>
+                      {#if $userInteractions.views.has(it.id)}
+                        <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full" title="Already viewed">✓</span>
+                      {/if}
+                    </div>
                   </button>
                 </li>
               {/each}
@@ -446,7 +477,7 @@
             <div class="mt-4 border-t pt-3">
               <div class="flex items-center justify-between mb-2">
                 <h4 class="font-semibold">Top neighbors</h4>
-                <span class="text-[10px] text-gray-500">G = {NEIGHBOR_WEIGHTS.text}·Text + {NEIGHBOR_WEIGHTS.date}·Date + {NEIGHBOR_WEIGHTS.place}·Place + {NEIGHBOR_WEIGHTS.user}·User</span>
+                <span class="text-[10px] text-gray-500">G<sub>ij</sub> = {NEIGHBOR_WEIGHTS.text.toFixed(2)}·S<sub>text</sub> + {NEIGHBOR_WEIGHTS.date.toFixed(2)}·S<sub>date</sub> + {NEIGHBOR_WEIGHTS.place.toFixed(2)}·S<sub>place</sub> + {NEIGHBOR_WEIGHTS.user.toFixed(2)}·S<sub>user</sub></span>
               </div>
               <ul class="divide-y">
                 {#each hoveredNeighbors as n}

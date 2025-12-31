@@ -2,7 +2,6 @@ import json
 import math
 import os
 from pathlib import Path
-import ast
 
 import numpy as np
 import pandas as pd
@@ -10,14 +9,68 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
+##### Load Custom Gazetteer #####
+with open('data/mappings/manual_gazetteer.json', 'r', encoding='utf-8') as f:
+    gazetteer = json.load(f)
+
 ##### Load metadata #####
 
 df = pd.read_json('static/data/europeana_metadata.json')
 
-df['title'] = df['title'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
-df['concepts'] = df['concepts'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
-df['description'] = df['description'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
-df['place_label'] = df['place_label'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
+def handle_scalar_values(func):
+    def wrapper(value):
+        if value is None:
+            return ''
+        try:
+            if pd.isna(value):
+                return ''
+        except (ValueError, TypeError):
+            pass
+        return func(value)
+    return wrapper
+
+@handle_scalar_values
+def extract_text_field(field):
+    """Extract text from a field that may be a string, list, or dict."""
+    
+    if isinstance(field, str):
+        return field
+    if isinstance(field, list):
+        return ' '.join(str(item) for item in field if item)
+    if isinstance(field, dict):
+        for lang in ['en', 'fr', 'de']:
+            if lang in field and field[lang]:
+                value = field[lang]
+                if isinstance(value, list):
+                    return ' '.join(str(item) for item in value if item)
+                return str(value)
+        
+        values = [str(v) for v in field.values() if v]
+        return ' '.join(values) if values else ''
+    
+    return str(field)
+                
+@handle_scalar_values
+def extract_place_name(place_label):
+    """Extract consistent place name for gazetteer lookup."""
+    if isinstance(place_label, str):
+        return place_label
+    if isinstance(place_label, list):
+        return str(place_label[0]) if place_label else ''
+    if isinstance(place_label, dict):
+        place_name = place_label.get('en')
+        if not place_name or place_name == 'Unknown':
+            place_name = next(iter(place_label.values()), 'Unknown')
+        return str(place_name) if place_name else ''
+    return str(place_label)
+
+#### Preprocess DataFrame #####
+
+df['title'] = df['title'].apply(extract_text_field)
+df['concepts'] = df['concepts'].apply(extract_text_field)
+df['description'] = df['description'].apply(extract_text_field)
+df['place_label'] = df['place_label'].apply(extract_place_name)
+
 
 df['year'] = pd.to_numeric(df['year'].replace('Unknown Year', None), errors='coerce')
 
@@ -26,6 +79,18 @@ for c in ['date_begin', 'date_end']:
 
 df = df[['id', 'title', 'description', 'concepts', 'year', 'date_begin', 'date_end', 
          'place_label', 'place_lat', 'place_lon', 'country', 'collection']]
+
+#### Handle missing coordinates using gazetteer #####
+for idx, row in df.iterrows():
+    if pd.notna(row['place_lat']) and pd.notna(row['place_lon']):
+        continue  # Coordinates already present
+    
+    place_name = row['place_label']
+    
+    if place_name and place_name in gazetteer:
+        gaz_entry = gazetteer[place_name]
+        df.at[idx, 'place_lat'] = gaz_entry.get('place_lat')
+        df.at[idx, 'place_lon'] = gaz_entry.get('place_lon')
 
 #### Build text vectors #####
 

@@ -23,8 +23,26 @@
     export let data;
 
     let vectorMatrix: HTMLElement;
+    let formulaStextRef: HTMLElement;
+    let formulaSdateRef: HTMLElement;
+    let formulaSdateDetail: HTMLElement;
+    let formulaSpaceDetail: HTMLElement;
+    let formulaSuserDetail: HTMLElement;
+    let formulaGMain: HTMLElement;
+    let formulaGMainDetail: HTMLElement;
+    let formulaGDynamic: HTMLElement;
+    let formulaGExample: HTMLElement;
     
     const matrixLatex = '\\begin{bmatrix} \\vec{\\text{metadata}} \\parallel \\vec{\\text{spatial}} \\parallel \\vec{\\text{temporal}} \\parallel \\vec{\\text{interaction}} \\end{bmatrix}';
+    const formulaStextLatex = 'S_{\\text{text}} = \\text{cosine\\_similarity}(\\text{TF-IDF}_{\\text{item1}}, \\text{TF-IDF}_{\\text{item2}})';
+    const formulaSdateLatex = 'S_{\\text{date}} = \\exp\\left(-\\frac{\\text{distance}}{25}\\right)';
+    const formulaSdateDetailLatex = '\\text{where distance} = \\text{min\\_distance\\_between\\_ranges}(\\text{item}_1, \\text{item}_2), \\quad \\text{distance} = 0 \\text{ if ranges overlap}';
+    const formulaSpaceLatex = 'S_{\\text{place}} = \\exp\\left(-\\frac{\\text{distance}_{\\text{km}}}{400}\\right)';
+    const formulaSpaceDetailLatex = '\\text{where distance}_{\\text{km}} = \\text{haversine}(\\text{lat}_1, \\text{lon}_1, \\text{lat}_2, \\text{lon}_2)';
+    const formulaSuserLatex = 'S_{\\text{user}}(i, j) = 0.4 \\times \\text{co-view}_{\\text{normalized}}(i, j) + 0.6 \\times \\text{co-bookmark}_{\\text{normalized}}(i, j)';
+    const formulaGMainLatex = 'G = \\alpha \\times S_{\\text{text}} + \\beta \\times S_{\\text{date}} + \\gamma \\times S_{\\text{place}} + \\delta \\times S_{\\text{user}}';
+    const formulaGMainDetailLatex = '\\text{where } \\alpha + \\beta + \\gamma + \\delta = 1.0';
+    const formulaGExampleLatex = 'G = \\frac{75}{190} \\times S_{\\text{text}} + \\frac{45}{190} \\times S_{\\text{date}} + \\frac{55}{190} \\times S_{\\text{place}} + \\frac{15}{190} \\times S_{\\text{user}}';
 
     // Interactive graph state
     let selectedNode: any = null;
@@ -332,6 +350,17 @@
             });
         }
         
+        // Render all LaTeX formulas
+        if (formulaStextRef) katex.render(formulaStextLatex, formulaStextRef, { throwOnError: false });
+        if (formulaSdateRef) katex.render(formulaSdateLatex, formulaSdateRef, { throwOnError: false });
+        if (formulaSdateDetail) katex.render(formulaSdateDetailLatex, formulaSdateDetail, { throwOnError: false });
+        if (formulaSpaceDetail) katex.render(formulaSpaceLatex + ', \\quad ' + formulaSpaceDetailLatex, formulaSpaceDetail, { throwOnError: false });
+        if (formulaSuserDetail) katex.render(formulaSuserLatex, formulaSuserDetail, { throwOnError: false });
+        if (formulaGMain) katex.render(formulaGMainLatex, formulaGMain, { throwOnError: false, displayMode: true });
+        if (formulaGMainDetail) katex.render(formulaGMainDetailLatex, formulaGMainDetail, { throwOnError: false, displayMode: true });
+        if (formulaGDynamic) katex.render(formulaGMainLatex, formulaGDynamic, { throwOnError: false, displayMode: true });
+        if (formulaGExample) katex.render(formulaGExampleLatex, formulaGExample, { throwOnError: false });
+        
         loadReferences();
         initializeDemo();
     });
@@ -417,7 +446,7 @@
                     These four text fields are concatenated into a single document per item. TF-IDF assigns weights to words based on their frequency within each document and rarity across all documents, emphasizing distinctive terms. The cosine similarity between two TF-IDF vectors measures how similar their textual content is, ranging from 0 (completely different) to 1 (identical).
                 </p>
                 <p class="formula">
-                    <em>S<sub>text</sub> = cosine_similarity(TF-IDF<sub>item1</sub>, TF-IDF<sub>item2</sub>)</em>
+                    <span bind:this={formulaStextRef}></span>
                 </p>
             </div>
         </details>
@@ -447,9 +476,8 @@
                     The calculation uses a bandwidth of <strong>25 years</strong>, meaning items whose ranges are 25 years apart retain about 37% similarity (e<sup>-1</sup>), while items 50 years apart have about 14% similarity (e<sup>-2</sup>).
                 </p>
                 <p class="formula">
-                    <em>S<sub>date</sub> = exp(-distance / 25)</em><br>
-                    <em>where distance = min_distance_between_ranges(item<sub>1</sub>, item<sub>2</sub>)</em><br>
-                    <em>distance = 0 if ranges overlap</em>
+                    <span bind:this={formulaSdateRef}></span><br>
+                    <span bind:this={formulaSdateDetail}></span>
                 </p>
             </div>
         </details>
@@ -481,8 +509,7 @@
                     <strong>Important:</strong> While <code>place_label</code> (textual place names) and <code>country</code> appear in the metadata, they are <em>not used for spatial proximity</em>. Only the numerical coordinates determine this measurement. Place names do contribute to <em>textual similarity</em> instead.
                 </p>
                 <p class="formula">
-                    <em>S<sub>place</sub> = exp(-distance<sub>km</sub> / 400)</em><br>
-                    <em>where distance<sub>km</sub> = haversine(lat<sub>1</sub>, lon<sub>1</sub>, lat<sub>2</sub>, lon<sub>2</sub>)</em>
+                    <span bind:this={formulaSpaceDetail}></span>
                 </p>
             </div>
         </details>
@@ -490,8 +517,8 @@
         <div class="final-formula">
             <strong>Final "Good Neighbor Index":</strong>
             <p class="formula main">
-                <em>G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub></em><br>
-                <em>where α + β + γ + δ = 1.0</em>
+                <span bind:this={formulaGMain}></span><br>
+                <span bind:this={formulaGMainDetail}></span>
             </p>
             <p class="formula-note">
                 The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. The backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1 as default values, which allocate 50% to textual similarity, 20% to temporal proximity, 20% to spatial proximity, and 10% to user interactions. The user interaction component starts at S<sub>user</sub>=0 (no browsing data yet) and increases as visitors explore the archive. These weights can be dynamically adjusted through the interactive demo to emphasize different relational dimensions.
@@ -737,7 +764,7 @@
                     The algorithm uses a <strong>sliding window approach</strong> for views: items viewed close together in time (within 5 items) are considered co-occurring. For bookmarks, all pairs of bookmarked items are treated as related.
                 </p>
                 <p class="formula">
-                    <em>S<sub>user</sub>(i, j) = 0.4 × co-view<sub>normalized</sub>(i, j) + 0.6 × co-bookmark<sub>normalized</sub>(i, j)</em>
+                    <span bind:this={formulaSuserDetail}></span>
                 </p>
                 <p>
                     This creates a <strong>collaborative filtering effect</strong> based on individual sessions rather than aggregate user data. Items a visitor has engaged with become more strongly connected, influencing which neighbors are suggested for subsequent items they explore.
@@ -792,8 +819,7 @@
                     The final "Good Neighbor Index" is calculated using adjustable weights for each similarity dimension:
                 </p>
                 <p class="formula">
-                    <em>G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub></em><br>
-                    <em>where α + β + γ + δ = 1.0</em>
+                    <span bind:this={formulaGDynamic}></span>
                 </p>
                 <p>
                     The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. For example, the backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1, but these can be modified in real-time to emphasize different dimensions—whether prioritizing textual similarity, temporal proximity, spatial clustering, or user interaction patterns.
@@ -827,7 +853,7 @@
                     <li><strong>Normalized:</strong> 0.395, 0.237, 0.289, 0.079 (sum = 1.0)</li>
                 </ul>
                 <p class="formula">
-                    <em>G = (75/190) × S<sub>text</sub> + (45/190) × S<sub>date</sub> + (55/190) × S<sub>place</sub> + (15/190) × S<sub>user</sub></em>
+                    <span bind:this={formulaGExample}></span>
                 </p>
                 <p>
                     The resulting G coefficient ranges from 0 to 1, displayed as percentages in the recommendation cards. The <strong>S<sub>user</sub></strong> value is calculated dynamically based on clicked items: items that have been clicked receive S<sub>user</sub>=1.0, while items sharing neighbors with clicked items receive values between 0.3 and 0.9.

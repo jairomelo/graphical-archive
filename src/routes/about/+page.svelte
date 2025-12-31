@@ -20,6 +20,8 @@
     import NetworkGraph from '$lib/NetworkGraph.svelte';
     import { items, edges } from '$lib/stores';
     
+    import { asset } from '$app/paths';
+
     export let data;
 
     let vectorMatrix: HTMLElement;
@@ -262,7 +264,7 @@
 
     async function loadReferences() {
         try {
-            const response = await fetch('/references.bib');
+            const response = await fetch(asset('/references.bib'));
             const bibText = await response.text();
             console.log('BibTeX loaded:', bibText.substring(0, 200));
             

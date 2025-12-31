@@ -34,15 +34,15 @@
     let formulaGExample: HTMLElement;
     
     const matrixLatex = '\\begin{bmatrix} \\vec{\\text{metadata}} \\parallel \\vec{\\text{spatial}} \\parallel \\vec{\\text{temporal}} \\parallel \\vec{\\text{interaction}} \\end{bmatrix}';
-    const formulaStextLatex = 'S_{\\text{text}} = \\text{cosine\\_similarity}(\\text{TF-IDF}_{\\text{item1}}, \\text{TF-IDF}_{\\text{item2}})';
-    const formulaSdateLatex = 'S_{\\text{date}} = \\exp\\left(-\\frac{\\text{distance}}{25}\\right)';
-    const formulaSdateDetailLatex = '\\text{where distance} = \\text{min\\_distance\\_between\\_ranges}(\\text{item}_1, \\text{item}_2), \\quad \\text{distance} = 0 \\text{ if ranges overlap}';
-    const formulaSpaceLatex = 'S_{\\text{place}} = \\exp\\left(-\\frac{\\text{distance}_{\\text{km}}}{400}\\right)';
-    const formulaSpaceDetailLatex = '\\text{where distance}_{\\text{km}} = \\text{haversine}(\\text{lat}_1, \\text{lon}_1, \\text{lat}_2, \\text{lon}_2)';
+    const formulaStextLatex = 'S_{\\text{text}}(i, j) = \\text{cosine\\_similarity}(\\text{TF-IDF}_i, \\text{TF-IDF}_j)';
+    const formulaSdateLatex = 'S_{\\text{date}}(i, j) = \\exp\\left(-\\frac{\\text{distance}(i, j)}{25}\\right)';
+    const formulaSdateDetailLatex = '\\text{where distance}(i, j) = \\text{min\\_distance\\_between\\_ranges}(\\text{item}_i, \\text{item}_j), \\quad \\text{distance} = 0 \\text{ if ranges overlap}';
+    const formulaSpaceLatex = 'S_{\\text{place}}(i, j) = \\exp\\left(-\\frac{\\text{distance}_{\\text{km}}(i, j)}{400}\\right)';
+    const formulaSpaceDetailLatex = '\\text{where distance}_{\\text{km}}(i, j) = \\text{haversine}(\\text{lat}_i, \\text{lon}_i, \\text{lat}_j, \\text{lon}_j)';
     const formulaSuserLatex = 'S_{\\text{user}}(i, j) = 0.4 \\times \\text{co-view}_{\\text{normalized}}(i, j) + 0.6 \\times \\text{co-bookmark}_{\\text{normalized}}(i, j)';
-    const formulaGMainLatex = 'G = \\alpha \\times S_{\\text{text}} + \\beta \\times S_{\\text{date}} + \\gamma \\times S_{\\text{place}} + \\delta \\times S_{\\text{user}}';
+    const formulaGMainLatex = 'G_{ij} = \\alpha \\times S_{\\text{text}}(i, j) + \\beta \\times S_{\\text{date}}(i, j) + \\gamma \\times S_{\\text{place}}(i, j) + \\delta \\times S_{\\text{user}}(i, j)';
     const formulaGMainDetailLatex = '\\text{where } \\alpha + \\beta + \\gamma + \\delta = 1.0';
-    const formulaGExampleLatex = 'G = \\frac{75}{190} \\times S_{\\text{text}} + \\frac{45}{190} \\times S_{\\text{date}} + \\frac{55}{190} \\times S_{\\text{place}} + \\frac{15}{190} \\times S_{\\text{user}}';
+    const formulaGExampleLatex = 'G_{ij} = \\frac{75}{190} \\times S_{\\text{text}}(i, j) + \\frac{45}{190} \\times S_{\\text{date}}(i, j) + \\frac{55}{190} \\times S_{\\text{place}}(i, j) + \\frac{15}{190} \\times S_{\\text{user}}(i, j)';
 
     // Interactive graph state
     let selectedNode: any = null;
@@ -372,6 +372,7 @@
 </svelte:head>
 
 <article class="about-page">
+    <div class="text-body">
     <h1>How to read the Graphical Archive</h1>
 
     <p>
@@ -515,7 +516,10 @@
         </details>
 
         <div class="final-formula">
-            <strong>Final "Good Neighbor Index":</strong>
+            <strong>"Good Neighbor Index":</strong>
+            <p class="formula-note">
+                To calculate the "neighborness" between two archival items, we combine the four similarity vectors into a single weighted score <em>G<sub>ij</sub></em>:
+            </p>
             <p class="formula main">
                 <span bind:this={formulaGMain}></span><br>
                 <span bind:this={formulaGMainDetail}></span>
@@ -831,6 +835,7 @@
         </details>
     </div>
 
+
     <h3>Interactive Demo: See It in Action</h3>
 
     <p>
@@ -864,6 +869,9 @@
             </div>
         </details>
     </div>
+</div>
+
+<!-- Demo Section -->
 
     {#if demoSelectedItem}
         <div class="demo-container">
@@ -1020,6 +1028,9 @@
         <p class="instruction">Loading interactive demo...</p>
     {/if}
 
+<!-- End of Demo Section -->
+
+    <div class="text-body">
     <p>
         The number of displayed neighbors directly impacts the balance between precision and discovery. Showing only the top 8 neighbors emphasizes the strongest relationships, making it easier for clicked items to dominate the recommendations; ideal for focused exploration within tightly related clusters (e.g., same collection, time period, or location). In contrast, expanding to 50 neighbors surfaces weaker but potentially interesting connections, enabling broader discovery across the archive's scattered elements. The optimal choice depends entirely on the visitor's exploration strategy: depth versus breadth, familiar versus unexpected.
     </p>
@@ -1068,6 +1079,7 @@
             <p>Loading references...</p>
         {/if}
     </div>
+    </div>
 </article>
 
 <style>
@@ -1078,7 +1090,10 @@
         line-height: 1.6;
     }
 
-
+    .text-body {
+        max-width: 800px;
+        margin: 0 auto;
+    }
 
     h1 {
         font-size: 2.5rem;

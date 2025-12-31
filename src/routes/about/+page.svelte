@@ -23,15 +23,44 @@
     export let data;
 
     let vectorMatrix: HTMLElement;
+    let formulaStextRef: HTMLElement;
+    let formulaSdateRef: HTMLElement;
+    let formulaSdateDetail: HTMLElement;
+    let formulaSpaceDetail: HTMLElement;
+    let formulaSuserDetail: HTMLElement;
+    let formulaGMain: HTMLElement;
+    let formulaGMainDetail: HTMLElement;
+    let formulaGDynamic: HTMLElement;
+    let formulaGExample: HTMLElement;
     
     const matrixLatex = '\\begin{bmatrix} \\vec{\\text{metadata}} \\parallel \\vec{\\text{spatial}} \\parallel \\vec{\\text{temporal}} \\parallel \\vec{\\text{interaction}} \\end{bmatrix}';
+    const formulaStextLatex = 'S_{\\text{text}}(i, j) = \\text{cosine\\_similarity}(\\text{TF-IDF}_i, \\text{TF-IDF}_j)';
+    const formulaSdateLatex = 'S_{\\text{date}}(i, j) = \\exp\\left(-\\frac{\\text{distance}(i, j)}{25}\\right)';
+    const formulaSdateDetailLatex = '\\text{where distance}(i, j) = \\text{min\\_distance\\_between\\_ranges}(\\text{item}_i, \\text{item}_j), \\quad \\text{distance} = 0 \\text{ if ranges overlap}';
+    const formulaSpaceLatex = 'S_{\\text{place}}(i, j) = \\exp\\left(-\\frac{\\text{distance}_{\\text{km}}(i, j)}{400}\\right)';
+    const formulaSpaceDetailLatex = '\\text{where distance}_{\\text{km}}(i, j) = \\text{haversine}(\\text{lat}_i, \\text{lon}_i, \\text{lat}_j, \\text{lon}_j)';
+    const formulaSuserLatex = 'S_{\\text{user}}(i, j) = 0.4 \\times \\text{co-view}_{\\text{normalized}}(i, j) + 0.6 \\times \\text{co-bookmark}_{\\text{normalized}}(i, j)';
+    const formulaGMainLatex = 'G_{ij} = \\alpha \\times S_{\\text{text}}(i, j) + \\beta \\times S_{\\text{date}}(i, j) + \\gamma \\times S_{\\text{place}}(i, j) + \\delta \\times S_{\\text{user}}(i, j)';
+    const formulaGMainDetailLatex = '\\text{where } \\alpha + \\beta + \\gamma + \\delta = 1.0';
+    const formulaGExampleLatex = 'G_{ij} = \\frac{75}{190} \\times S_{\\text{text}}(i, j) + \\frac{45}{190} \\times S_{\\text{date}}(i, j) + \\frac{55}{190} \\times S_{\\text{place}}(i, j) + \\frac{15}{190} \\times S_{\\text{user}}(i, j)';
 
     // Interactive graph state
     let selectedNode: any = null;
     let selectedEdge: { source: any; target: any; scores: any } | null = null;
     let expandedSimilarity: 'text' | 'date' | 'place' | null = null;
     let neighbors: Record<string, any[]> = {};
+    let filteredNeighbors: Record<string, any[]> = {};
     let edgesMap: Map<string, any> = new Map();
+    let gazetteer: Record<string, any[]> = {};
+
+    // Interactive demo state
+    let demoSelectedItem: any = null;
+    let demoClickedItems: Set<string> = new Set();
+    let demoWeights = { text: 50, date: 20, place: 20, user: 10 };
+    let demoRecommendations: any[] = [];
+    let demoAllRecommendations: any[] = [];
+    let demoDisplayCount: number = 15;
+    let initialPositions: Map<string, number> = new Map();
 
     // Normalize neighbors data and build edges map
     function normalizeNeighbors(n: any) {
@@ -80,6 +109,150 @@
     function formatArrayField(field: any): string {
         if (Array.isArray(field)) return field.join(', ');
         return field || 'N/A';
+    }
+
+    function getCoordinates(item: any): { lat: number; lon: number } | null {
+        // First try item's own coordinates
+        if (item.place_lat && item.place_lon) {
+            return { lat: item.place_lat, lon: item.place_lon };
+        }
+        
+        // Fallback to gazetteer using place_label
+        if (item.place_label && data.gazetteer) {
+            const placeLabel = Array.isArray(item.place_label) 
+                ? item.place_label[0] 
+                : item.place_label;
+            
+            const gazetteerEntry = data.gazetteer[placeLabel];
+            if (gazetteerEntry && gazetteerEntry.place_lat && gazetteerEntry.place_lon) {
+                return { 
+                    lat: gazetteerEntry.place_lat, 
+                    lon: gazetteerEntry.place_lon 
+                };
+            }
+        }
+        
+        return null;
+    }
+
+    // Demo functions
+    function initializeDemo() {
+        // Pick a random starting item
+        const itemsArray = $items.filter(item => 
+            item.thumbnail && 
+            data.neighbors[item.id] && 
+            data.neighbors[item.id].length >= 20
+        );
+        if (itemsArray.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(itemsArray.length, 50));
+            demoSelectedItem = itemsArray[randomIndex];
+            updateDemoRecommendations();
+        }
+    }
+
+    function calculateUserSimilarity(itemId: string): number {
+        if (demoClickedItems.size === 0) return 0;
+        
+        // Simple co-occurrence: if item was clicked, high score
+        if (demoClickedItems.has(itemId)) return 1.0;
+        
+        // If item shares neighbors with clicked items, medium score
+        const itemNeighbors = new Set(
+            (data.neighbors[itemId] || []).map((n: any) => n.id)
+        );
+        
+        let sharedCount = 0;
+        demoClickedItems.forEach(clickedId => {
+            if (itemNeighbors.has(clickedId)) sharedCount++;
+        });
+        
+        return sharedCount > 0 ? 0.3 + (sharedCount * 0.2) : 0;
+    }
+
+    function updateDemoRecommendations() {
+        if (!demoSelectedItem) return;
+        
+        const baseNeighbors = data.neighbors[demoSelectedItem.id] || [];
+        
+        // Normalize weights to sum to 1.0 for proper mathematical calculation
+        const sum = demoWeights.text + demoWeights.date + demoWeights.place + demoWeights.user;
+        const w_text = sum > 0 ? demoWeights.text / sum : 0;
+        const w_date = sum > 0 ? demoWeights.date / sum : 0;
+        const w_place = sum > 0 ? demoWeights.place / sum : 0;
+        const w_user = sum > 0 ? demoWeights.user / sum : 0;
+        
+        // Recalculate scores with normalized weights
+        const scoredNeighbors = baseNeighbors.map((neighbor: any) => {
+            const userScore = calculateUserSimilarity(neighbor.id);
+            const weightedScore = 
+                w_text * neighbor.S_text +
+                w_date * neighbor.S_date +
+                w_place * neighbor.S_place +
+                w_user * userScore;
+            
+            return {
+                ...neighbor,
+                weightedScore,
+                userScore,
+                item: $items.find(i => i.id === neighbor.id)
+            };
+        });
+        
+        // Sort by weighted score and store all
+        demoAllRecommendations = scoredNeighbors
+            .filter((n: any) => n.item)
+            .sort((a: any, b: any) => b.weightedScore - a.weightedScore);
+        
+        // Take the top N based on display count
+        demoRecommendations = demoAllRecommendations.slice(0, demoDisplayCount);
+        
+        // Store initial positions if this is the first recommendation
+        if (initialPositions.size === 0 && demoAllRecommendations.length > 0) {
+            demoAllRecommendations.forEach((rec, index) => {
+                initialPositions.set(rec.id, index + 1);
+            });
+        }
+    }
+
+    function handleDemoItemClick(itemId: string) {
+        // Track the click for user interactions
+        demoClickedItems.add(itemId);
+        demoClickedItems = demoClickedItems;
+        
+        // Make the clicked item the new selected item (like clicking a YouTube recommendation)
+        const clickedItem = $items.find(i => i.id === itemId);
+        if (clickedItem) {
+            demoSelectedItem = clickedItem;
+        }
+        
+        // User interaction similarity (S_user) increases automatically for clicked items
+        // but weights remain under your manual control
+        updateDemoRecommendations();
+    }
+
+    function handleWeightChange() {
+        // Just update recommendations - weights are already in percentage form (0-100)
+        // They'll be used directly in the weighted score calculation
+        updateDemoRecommendations();
+    }
+
+    function handleDisplayCountChange() {
+        demoRecommendations = demoAllRecommendations.slice(0, demoDisplayCount);
+    }
+
+    function resetDemo() {
+        demoClickedItems.clear();
+        demoClickedItems = demoClickedItems;
+        initialPositions.clear();
+        initialPositions = initialPositions;
+        demoWeights = { text: 50, date: 20, place: 20, user: 10 };
+        initializeDemo();
+    }
+
+    function formatTitle(item: any): string {
+        if (!item) return 'Unknown';
+        if (Array.isArray(item.title)) return item.title[0] || 'Unknown';
+        return item.title || 'Unknown';
     }
 
     // BibTeX references
@@ -159,6 +332,17 @@
         // Build neighbors object for NetworkGraph
         neighbors = data.neighbors || {};
         
+        // Create filtered version with only top 10 neighbors for visualization
+        // This prevents over-dense networks while keeping all 50 for the demo
+        filteredNeighbors = Object.fromEntries(
+            Object.entries(neighbors).map(([key, neighborList]) => [
+                key,
+                neighborList
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .slice(0, 10)
+            ])
+        );
+        
         if (vectorMatrix) {
             katex.render(matrixLatex, vectorMatrix, {
                 throwOnError: false,
@@ -166,7 +350,19 @@
             });
         }
         
+        // Render all LaTeX formulas
+        if (formulaStextRef) katex.render(formulaStextLatex, formulaStextRef, { throwOnError: false });
+        if (formulaSdateRef) katex.render(formulaSdateLatex, formulaSdateRef, { throwOnError: false });
+        if (formulaSdateDetail) katex.render(formulaSdateDetailLatex, formulaSdateDetail, { throwOnError: false });
+        if (formulaSpaceDetail) katex.render(formulaSpaceLatex + ', \\quad ' + formulaSpaceDetailLatex, formulaSpaceDetail, { throwOnError: false });
+        if (formulaSuserDetail) katex.render(formulaSuserLatex, formulaSuserDetail, { throwOnError: false });
+        if (formulaGMain) katex.render(formulaGMainLatex, formulaGMain, { throwOnError: false, displayMode: true });
+        if (formulaGMainDetail) katex.render(formulaGMainDetailLatex, formulaGMainDetail, { throwOnError: false, displayMode: true });
+        if (formulaGDynamic) katex.render(formulaGMainLatex, formulaGDynamic, { throwOnError: false, displayMode: true });
+        if (formulaGExample) katex.render(formulaGExampleLatex, formulaGExample, { throwOnError: false });
+        
         loadReferences();
+        initializeDemo();
     });
 
 </script>
@@ -176,6 +372,7 @@
 </svelte:head>
 
 <article class="about-page">
+    <div class="text-body">
     <h1>How to read the Graphical Archive</h1>
 
     <p>
@@ -226,7 +423,7 @@
     <div class="vectors-matrix" bind:this={vectorMatrix}></div>
 
     <p>
-        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The current implementation uses: <strong>60% textual similarity</strong>, <strong>20% temporal proximity</strong>, and <strong>20% spatial proximity</strong>.
+        Each vector can be weighted differently based on user preferences, allowing for a dynamic exploration of the archive based on different relational criteria. The pre-computed weights reserve space for user interactions: <strong>50% textual similarity</strong>, <strong>20% temporal proximity</strong>, <strong>20% spatial proximity</strong>, and <strong>10% user interaction</strong> (initially zero, grows with browsing behavior).
     </p>
 
     <div class="methodology-callouts">
@@ -250,7 +447,7 @@
                     These four text fields are concatenated into a single document per item. TF-IDF assigns weights to words based on their frequency within each document and rarity across all documents, emphasizing distinctive terms. The cosine similarity between two TF-IDF vectors measures how similar their textual content is, ranging from 0 (completely different) to 1 (identical).
                 </p>
                 <p class="formula">
-                    <em>S<sub>text</sub> = cosine_similarity(TF-IDF<sub>item1</sub>, TF-IDF<sub>item2</sub>)</em>
+                    <span bind:this={formulaStextRef}></span>
                 </p>
             </div>
         </details>
@@ -280,9 +477,8 @@
                     The calculation uses a bandwidth of <strong>25 years</strong>, meaning items whose ranges are 25 years apart retain about 37% similarity (e<sup>-1</sup>), while items 50 years apart have about 14% similarity (e<sup>-2</sup>).
                 </p>
                 <p class="formula">
-                    <em>S<sub>date</sub> = exp(-distance / 25)</em><br>
-                    <em>where distance = min_distance_between_ranges(item<sub>1</sub>, item<sub>2</sub>)</em><br>
-                    <em>distance = 0 if ranges overlap</em>
+                    <span bind:this={formulaSdateRef}></span><br>
+                    <span bind:this={formulaSdateDetail}></span>
                 </p>
             </div>
         </details>
@@ -314,19 +510,22 @@
                     <strong>Important:</strong> While <code>place_label</code> (textual place names) and <code>country</code> appear in the metadata, they are <em>not used for spatial proximity</em>. Only the numerical coordinates determine this measurement. Place names do contribute to <em>textual similarity</em> instead.
                 </p>
                 <p class="formula">
-                    <em>S<sub>place</sub> = exp(-distance<sub>km</sub> / 400)</em><br>
-                    <em>where distance<sub>km</sub> = haversine(lat<sub>1</sub>, lon<sub>1</sub>, lat<sub>2</sub>, lon<sub>2</sub>)</em>
+                    <span bind:this={formulaSpaceDetail}></span>
                 </p>
             </div>
         </details>
 
         <div class="final-formula">
-            <strong>Final "Good Neighbor Index":</strong>
+            <strong>"Good Neighbor Index":</strong>
+            <p class="formula-note">
+                To calculate the "neighborness" between two archival items, we combine the four similarity vectors into a single weighted score <em>G<sub>ij</sub></em>:
+            </p>
             <p class="formula main">
-                <em>G = 0.6 × S<sub>text</sub> + 0.2 × S<sub>date</sub> + 0.2 × S<sub>place</sub></em>
+                <span bind:this={formulaGMain}></span><br>
+                <span bind:this={formulaGMainDetail}></span>
             </p>
             <p class="formula-note">
-                These weights (60%, 20%, 20%) can be adjusted by users to explore the archive through different relational lenses, emphasizing textual, temporal, or spatial connections as desired.
+                The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. The backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1 as default values, which allocate 50% to textual similarity, 20% to temporal proximity, 20% to spatial proximity, and 10% to user interactions. The user interaction component starts at S<sub>user</sub>=0 (no browsing data yet) and increases as visitors explore the archive. These weights can be dynamically adjusted through the interactive demo to emphasize different relational dimensions.
             </p>
         </div>
     </div>
@@ -338,7 +537,7 @@
     <div class="graph-container">
         <NetworkGraph 
             items={$items.slice(0, 50)} 
-            neighbors={neighbors} 
+            neighbors={filteredNeighbors} 
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}
             maxNodes={50}
@@ -365,15 +564,15 @@
                         <span class="score-label">Combined Score:</span>
                         <span class="score-value main">{(selectedEdge.scores.score * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('text')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('text')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('text')}>
                         <span class="score-label">Textual Similarity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_text * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('date')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('date')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('date')}>
                         <span class="score-label">Temporal Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_date * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('place')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('place')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('place')}>
                         <span class="score-label">Spatial Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_place * 100).toFixed(1)}%</span>
                     </div>
@@ -387,38 +586,38 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Title:</label>
+                                    <span class="field-label">Title:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.title)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Concepts:</label>
+                                    <span class="field-label">Concepts:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.concepts)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Description:</label>
+                                    <span class="field-label">Description:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.description)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Title:</label>
+                                    <span class="field-label">Title:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.title)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Concepts:</label>
+                                    <span class="field-label">Concepts:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.concepts)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Description:</label>
+                                    <span class="field-label">Description:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.description)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
                                 </div>
                             </div>
@@ -434,30 +633,30 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Year:</label>
+                                    <span class="field-label">Year:</span>
                                     <div class="field-value">{selectedEdge.source.year || 'Unknown'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date Begin:</label>
+                                    <span class="field-label">Date Begin:</span>
                                     <div class="field-value">{selectedEdge.source.date_begin || 'N/A'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date End:</label>
+                                    <span class="field-label">Date End:</span>
                                     <div class="field-value">{selectedEdge.source.date_end || 'N/A'}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Year:</label>
+                                    <span class="field-label">Year:</span>
                                     <div class="field-value">{selectedEdge.target.year || 'Unknown'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date Begin:</label>
+                                    <span class="field-label">Date Begin:</span>
                                     <div class="field-value">{selectedEdge.target.date_begin || 'N/A'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date End:</label>
+                                    <span class="field-label">Date End:</span>
                                     <div class="field-value">{selectedEdge.target.date_end || 'N/A'}</div>
                                 </div>
                             </div>
@@ -473,42 +672,50 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Coordinates:</label>
+                                    <span class="field-label">Coordinates:</span>
                                     <div class="field-value">
-                                        {#if selectedEdge.source.place_lat && selectedEdge.source.place_lon}
-                                            {selectedEdge.source.place_lat.toFixed(4)}, {selectedEdge.source.place_lon.toFixed(4)}
+                                        {#if getCoordinates(selectedEdge.source)}
+                                            {@const coords = getCoordinates(selectedEdge.source)}
+                                            {coords?.lat.toFixed(4)}, {coords?.lon.toFixed(4)}
+                                            {#if !selectedEdge.source.place_lat || !selectedEdge.source.place_lon}
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer">📍</span>
+                                            {/if}
                                         {:else}
                                             N/A
                                         {/if}
                                     </div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Country:</label>
+                                    <span class="field-label">Country:</span>
                                     <div class="field-value">{selectedEdge.source.country || 'N/A'}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Coordinates:</label>
+                                    <span class="field-label">Coordinates:</span>
                                     <div class="field-value">
-                                        {#if selectedEdge.target.place_lat && selectedEdge.target.place_lon}
-                                            {selectedEdge.target.place_lat.toFixed(4)}, {selectedEdge.target.place_lon.toFixed(4)}
+                                        {#if getCoordinates(selectedEdge.target)}
+                                            {@const coords = getCoordinates(selectedEdge.target)}
+                                            {coords?.lat.toFixed(4)}, {coords?.lon.toFixed(4)}
+                                            {#if !selectedEdge.target.place_lat || !selectedEdge.target.place_lon}
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer">📍</span>
+                                            {/if}
                                         {:else}
                                             N/A
                                         {/if}
                                     </div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Country:</label>
+                                    <span class="field-label">Country:</span>
                                     <div class="field-value">{selectedEdge.target.country || 'N/A'}</div>
                                 </div>
                             </div>
@@ -517,8 +724,9 @@
                 {/if}
                 
                 <p class="score-explanation">
-                    This edge represents a weighted combination of the three similarity vectors. The combined score is calculated as:
-                    <em>0.6 × Textual + 0.2 × Temporal + 0.2 × Spatial</em>
+                    This edge represents a weighted combination of the four similarity vectors. The combined score is calculated using the formula:
+                    G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub>
+                    <br>(User interactions not shown here as this is pre-computed data with default weights α=0.5, β=0.2, γ=0.2, δ=0.1)
                 </p>
             </div>
         </div>
@@ -530,9 +738,301 @@
         This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time. Records might cluster across different collections if they share strong similarities in their attributes.
     </p>
 
-    <h2>Navigating the Archive</h2>
+    <h3>The Fourth Vector: Visitor Interactions</h3>
+
     <p>
-        This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time.
+        Beyond the three computational similarity vectors (textual, temporal, and spatial), the Graphical Archive includes a <strong>fourth vector based on visitors' browsing behavior</strong>. This creates a personalized layer that adapts the network to each visitor's individual exploration patterns.
+    </p>
+
+    <p>
+        The metadata proximity calculations we've explored (textual, temporal, and spatial similarities) are pre-computed and stored in a middleware layer that provides the archive's initial shape. However, visitor interactions also play a crucial role in determining which connections become relevant during exploration. This is where collection boundaries blur, transforming the archive into a dynamic graphical space that adapts to visitors' interests in real-time.
+    </p>
+
+    <div class="methodology-callouts">
+        <details class="methodology-detail">
+            <summary>
+                <strong>User Interaction Similarity Calculation</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    As visitors navigate the archive—viewing items, bookmarking records, and exploring relationships—the system tracks which items they engage with. It then calculates similarity between items based on <strong>co-occurrence patterns</strong>: items that appear together in a browsing session are considered related.
+                </p>
+                <p><strong>Tracked interactions:</strong></p>
+                <ul>
+                    <li><code>Views</code> — Items clicked on or examined in detail</li>
+                    <li><code>Bookmarks</code> — Items explicitly saved for later reference</li>
+                    <li><code>View sequence</code> — The temporal order of exploration (sliding window)</li>
+                </ul>
+                <p>
+                    The algorithm uses a <strong>sliding window approach</strong> for views: items viewed close together in time (within 5 items) are considered co-occurring. For bookmarks, all pairs of bookmarked items are treated as related.
+                </p>
+                <p class="formula">
+                    <span bind:this={formulaSuserDetail}></span>
+                </p>
+                <p>
+                    This creates a <strong>collaborative filtering effect</strong> based on individual sessions rather than aggregate user data. Items a visitor has engaged with become more strongly connected, influencing which neighbors are suggested for subsequent items they explore.
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Privacy & Data Storage</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p class="note">
+                    <strong>Privacy-first architecture:</strong> All interaction tracking is <em>session-based only</em>. Browsing history is stored exclusively in the browser's <code>sessionStorage</code>, which is automatically cleared when the tab or browser window is closed.
+                </p>
+                <p>
+                    <strong>Implementation characteristics:</strong>
+                </p>
+                <ul>
+                    <li>No data is sent to external servers or databases</li>
+                    <li>No cookies are set for tracking across sessions</li>
+                    <li>Exploration patterns are never stored permanently</li>
+                    <li>Each visitor's personalized network remains isolated</li>
+                    <li>Closing the browser resets all interactions to zero</li>
+                </ul>
+                <p>
+                    <strong>Trade-off:</strong> Because interaction data is session-only, the user similarity vector cannot "train" or permanently modify the archive's network structure. Each visit starts fresh. This architectural choice prioritizes privacy over personalization persistence.
+                </p>
+                <p>
+                    Visitors can reset their current session's interaction data at any time by refreshing the page or closing and reopening the browser tab.
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Dynamic Weight Adjustment</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    The main archive interface provides interactive sliders to adjust the relative weights of all four similarity vectors. This enables exploration of the archive through different analytical lenses:
+                </p>
+                <ul>
+                    <li><strong>High textual weight</strong> → Prioritize items with similar topics, keywords, and descriptions</li>
+                    <li><strong>High temporal weight</strong> → Emphasize items from similar time periods</li>
+                    <li><strong>High spatial weight</strong> → Focus on geographic clustering</li>
+                    <li><strong>High user interaction weight</strong> → Surface items related to browsing patterns</li>
+                </ul>
+                <p>
+                    The final "Good Neighbor Index" is calculated using adjustable weights for each similarity dimension:
+                </p>
+                <p class="formula">
+                    <span bind:this={formulaGDynamic}></span>
+                </p>
+                <p>
+                    The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. For example, the backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1, but these can be modified in real-time to emphasize different dimensions—whether prioritizing textual similarity, temporal proximity, spatial clustering, or user interaction patterns.
+                </p>
+                <p>
+                    When weights are adjusted, the network visualization updates in real-time, reshaping the graph to reflect the chosen balance between computational similarity and personal exploration patterns.
+                </p>
+            </div>
+        </details>
+    </div>
+
+
+    <h3>Interactive Demo: See It in Action</h3>
+
+    <p>
+        The demonstration below shows how user interactions dynamically reshape item recommendations. Click on recommended items to simulate browsing behavior, and adjust the weight sliders to see how different similarity dimensions affect the ranking.
+    </p>
+
+    <div class="methodology-callouts">
+        <details class="methodology-detail">
+            <summary>
+                <strong>How the Weight Sliders Work</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    The weight sliders allow exploration of how different similarity dimensions affect recommendations. The sliders can be set to any values—the system automatically normalizes them to ensure they sum to 1.0 for the calculation.
+                </p>
+                <p><strong>Example normalization:</strong></p>
+                <ul>
+                    <li><strong>Input:</strong> Textual=75, Temporal=45, Spatial=55, User=15 (sum = 190)</li>
+                    <li><strong>Normalized:</strong> 0.395, 0.237, 0.289, 0.079 (sum = 1.0)</li>
+                </ul>
+                <p class="formula">
+                    <span bind:this={formulaGExample}></span>
+                </p>
+                <p>
+                    The resulting G coefficient ranges from 0 to 1, displayed as percentages in the recommendation cards. The <strong>S<sub>user</sub></strong> value is calculated dynamically based on clicked items: items that have been clicked receive S<sub>user</sub>=1.0, while items sharing neighbors with clicked items receive values between 0.3 and 0.9.
+                </p>
+                <p>
+                    <strong>Experiment:</strong> Set all weights to 0 except one at 100 to see recommendations based purely on a single dimension. Or distribute weights evenly (all at 25) to give equal importance to all factors.
+                </p>
+            </div>
+        </details>
+    </div>
+</div>
+
+<!-- Demo Section -->
+
+    {#if demoSelectedItem}
+        <div class="demo-container">
+            <!-- Left: Main Content -->
+            <div class="demo-main-content">
+                <div class="demo-selected">
+                    <div class="demo-thumbnail">
+                        {#if demoSelectedItem.thumbnail}
+                            <img src={demoSelectedItem.thumbnail} alt={formatTitle(demoSelectedItem)} />
+                        {:else}
+                            <div class="no-thumbnail">No image</div>
+                        {/if}
+                    </div>
+                    <div class="demo-details">
+                        <h4>{formatTitle(demoSelectedItem)}</h4>
+                        <p class="demo-meta">
+                            {demoSelectedItem.year || 'Unknown year'} • {demoSelectedItem.country || 'Unknown location'}
+                        </p>
+                        <p class="demo-instruction">
+                            💡 Click on recommended items to simulate browsing. Items you click will get higher similarity scores. Use the sliders below to adjust the weight balance.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="demo-weights">
+                    <h5>Similarity Vector Weights</h5>
+                    <div class="weight-controls">
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Textual</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.text}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.text.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Temporal</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.date}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.date.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item">
+                        <label>
+                            <span class="weight-label">Spatial</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.place}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value">{demoWeights.place.toFixed(0)}%</span>
+                        </label>
+                    </div>
+                    <div class="weight-item user-weight">
+                        <label>
+                            <span class="weight-label">User Interaction</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                bind:value={demoWeights.user}
+                                on:input={handleWeightChange}
+                                step="5"
+                            />
+                            <span class="weight-value highlight">{demoWeights.user.toFixed(0)}%</span>
+                        </label>
+                        <span class="weight-note">💡 Adjust to see how browsing patterns affect results</span>
+                    </div>
+                </div>
+                <button class="reset-button" on:click={resetDemo}>Reset Demo</button>
+            </div>
+            </div>
+
+            <!-- Right: Recommendations Sidebar -->
+            <div class="demo-recommendations">
+                <div class="recommendations-header">
+                    <h5>Recommended Neighbors</h5>
+                    <div class="display-control">
+                        <label>
+                            <span class="control-label">Show items: <strong>{demoDisplayCount}</strong></span>
+                            <input 
+                                type="range" 
+                                min="8" 
+                                max="50" 
+                                bind:value={demoDisplayCount}
+                                on:input={handleDisplayCountChange}
+                                step="1"
+                                class="count-slider"
+                            />
+                        </label>
+                    </div>
+                </div>
+                <div class="recommendations-grid">
+                    {#each demoRecommendations as rec, i}
+                        <div 
+                            class="recommendation-card"
+                            class:clicked={demoClickedItems.has(rec.id)}
+                            class:user-influenced={rec.userScore > 0}
+                            on:click={() => handleDemoItemClick(rec.id)}
+                            on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? (e.preventDefault(), handleDemoItemClick(rec.id)) : null}
+                            role="button"
+                            tabindex="0"
+                        >
+                            {#if rec.item.thumbnail}
+                                <img src={rec.item.thumbnail} alt={formatTitle(rec.item)} />
+                            {:else}
+                                <div class="card-no-thumbnail">No image</div>
+                            {/if}
+                            <div class="card-info">
+                                <div class="card-title">{formatTitle(rec.item)}</div>
+                                <div class="card-score">
+                                    Neighborness: {(rec.weightedScore * 100).toFixed(0)}%
+                                    {#if rec.userScore > 0}
+                                        <span class="user-badge" title="Boosted by user interactions">👤</span>
+                                    {/if}
+                                </div>
+                                {#if initialPositions.has(rec.id) && initialPositions.get(rec.id) !== (i + 1)}
+                                    <div class="position-indicator" title="Initial position: #{initialPositions.get(rec.id)}">
+                                        <span class="position-badge">was #{initialPositions.get(rec.id)}</span>
+                                        {#if (initialPositions.get(rec.id) ?? 0) > (i + 1)}
+                                            <span class="position-arrow up">↑</span>
+                                        {:else}
+                                            <span class="position-arrow down">↓</span>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+                <p class="demo-legend">
+                    <span class="legend-item"><span class="legend-badge user-influenced-badge"></span> Influenced by your interactions</span>
+                    <span class="legend-item"><span class="legend-badge clicked-badge"></span> Already viewed</span>
+                </p>
+            </div>
+        </div>
+    {:else}
+        <p class="instruction">Loading interactive demo...</p>
+    {/if}
+
+<!-- End of Demo Section -->
+
+    <div class="text-body">
+    <p>
+        The number of displayed neighbors directly impacts the balance between precision and discovery. Showing only the top 8 neighbors emphasizes the strongest relationships, making it easier for clicked items to dominate the recommendations; ideal for focused exploration within tightly related clusters (e.g., same collection, time period, or location). In contrast, expanding to 50 neighbors surfaces weaker but potentially interesting connections, enabling broader discovery across the archive's scattered elements. The optimal choice depends entirely on the visitor's exploration strategy: depth versus breadth, familiar versus unexpected.
     </p>
 
     <h2>Navigating the Archive</h2>
@@ -579,14 +1079,20 @@
             <p>Loading references...</p>
         {/if}
     </div>
+    </div>
 </article>
 
 <style>
     .about-page {
-        max-width: 800px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;
         line-height: 1.6;
+    }
+
+    .text-body {
+        max-width: 800px;
+        margin: 0 auto;
     }
 
     h1 {
@@ -736,11 +1242,6 @@
         font-family: 'Georgia', serif;
     }
 
-    .formula em {
-        font-style: italic;
-        color: #004499;
-    }
-
     .note {
         background-color: #fff9e6;
         border-left: 4px solid #ffc107;
@@ -771,10 +1272,6 @@
         background-color: rgba(255, 255, 255, 0.15);
         border-left: 4px solid white;
         font-size: 1.1rem;
-    }
-
-    .formula.main em {
-        color: white;
     }
 
     .formula-note {
@@ -920,12 +1417,6 @@
         line-height: 1.6;
     }
 
-    .score-explanation em {
-        font-style: italic;
-        color: #0066cc;
-        font-weight: 600;
-    }
-
     .metadata-comparison {
         margin-top: 1.5rem;
         padding: 1.5rem;
@@ -990,7 +1481,7 @@
         margin-bottom: 0.75rem;
     }
 
-    .field-group label {
+    .field-label {
         display: block;
         font-weight: 600;
         color: #555;
@@ -1005,6 +1496,15 @@
         font-size: 0.9rem;
         color: #333;
         word-wrap: break-word;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .gazetteer-badge {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        cursor: help;
     }
 
     sup {
@@ -1047,5 +1547,454 @@
 
     .reference-content :global(em) {
         font-style: italic;
+    }
+
+    /* Interactive Demo Styles */
+    .demo-container {
+        margin: 2rem auto;
+        max-width: 1400px;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        border: 2px solid #e0e0e0;
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+    }
+
+    @media (max-width: 1200px) {
+        .demo-container {
+            grid-template-columns: 1fr;
+            max-width: 800px;
+        }
+    }
+
+    .demo-main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .demo-selected {
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .demo-thumbnail {
+        width: 100%;
+        background-color: #000;
+        aspect-ratio: 16/9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .demo-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        margin: 0;
+        box-shadow: none;
+    }
+
+    .no-thumbnail, .card-no-thumbnail {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #e0e0e0;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    .demo-details {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+
+    .demo-details h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.4rem;
+        color: #333;
+        line-height: 1.3;
+    }
+
+    .demo-meta {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .demo-instruction {
+        background-color: #fff9e6;
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+        font-size: 0.95rem;
+        color: #856404;
+        margin: 0;
+    }
+
+    .demo-weights {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+
+    .demo-weights h5 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        color: #333;
+    }
+
+    .weight-controls {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .weight-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .weight-item label {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .weight-label {
+        font-weight: 600;
+        color: #555;
+        min-width: 120px;
+    }
+
+    .weight-item input[type="range"] {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: #e0e0e0;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    .weight-item input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0066cc;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .weight-item input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0066cc;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .weight-value {
+        font-weight: 700;
+        color: #0066cc;
+        min-width: 50px;
+        text-align: right;
+    }
+
+    .weight-value.highlight {
+        color: #ff6b35;
+        font-size: 1.1rem;
+    }
+
+    .weight-item.user-weight {
+        padding-top: 0.5rem;
+        border-top: 2px solid #e0e0e0;
+    }
+
+    .weight-note {
+        font-size: 0.85rem;
+        color: #ff6b35;
+        font-style: italic;
+        margin-left: 120px;
+    }
+
+    .reset-button {
+        margin-top: 1rem;
+        padding: 0.75rem 1.5rem;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .reset-button:hover {
+        background-color: #c82333;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    .demo-recommendations {
+        background-color: white;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .recommendations-header {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .recommendations-header h5 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1rem;
+        color: #333;
+    }
+
+    .display-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .display-control label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.85rem;
+        color: #666;
+        width: 100%;
+    }
+
+    .control-label {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .control-label strong {
+        color: #0066cc;
+        font-weight: 600;
+    }
+
+    .count-slider {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+    }
+
+    .recommendations-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 800px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    /* Custom scrollbar styling */
+    .recommendations-grid::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    @media (max-width: 1200px) {
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            max-height: none;
+        }
+    }
+
+    .recommendation-card {
+        background-color: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        gap: 0.75rem;
+        min-height: 94px;
+    }
+
+    @media (max-width: 1200px) {
+        .recommendation-card {
+            flex-direction: column;
+        }
+    }
+
+    .recommendation-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0, 102, 204, 0.2);
+        border-color: #0066cc;
+    }
+
+    .recommendation-card.clicked {
+        border-color: #28a745;
+        background-color: #e8f5e9;
+    }
+
+    .recommendation-card.user-influenced {
+        border-color: #ff6b35;
+        box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    }
+
+    .recommendation-card img {
+        width: 168px;
+        height: 94px;
+        object-fit: cover;
+        margin: 0;
+        box-shadow: none;
+        flex-shrink: 0;
+    }
+
+    .card-no-thumbnail {
+        width: 168px;
+        height: 94px;
+        background-color: #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 1200px) {
+        .recommendation-card img {
+            width: 100%;
+            height: 140px;
+        }
+
+        .card-no-thumbnail {
+            width: 100%;
+            height: 140px;
+        }
+    }
+
+    .card-info {
+        padding: 0.75rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-score {
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .user-badge {
+        font-size: 1rem;
+    }
+
+    .position-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+        font-size: 0.7rem;
+        color: #888;
+    }
+
+    .position-badge {
+        background-color: rgba(0, 102, 204, 0.1);
+        border: 1px solid rgba(0, 102, 204, 0.3);
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        font-weight: 500;
+    }
+
+    .position-arrow {
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+
+    .position-arrow.up {
+        color: #28a745;
+    }
+
+    .position-arrow.down {
+        color: #dc3545;
+    }
+
+    .demo-legend {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-badge {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid;
+    }
+
+    .user-influenced-badge {
+        border-color: #ff6b35;
+        background-color: rgba(255, 107, 53, 0.1);
+    }
+
+    .clicked-badge {
+        border-color: #28a745;
+        background-color: #e8f5e9;
     }
 </style>

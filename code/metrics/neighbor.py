@@ -214,11 +214,11 @@ if n > 1:
 
 
 #### Create the Good Neihbor Index #####
-alpha, beta, gamma = 0.6, 0.2, 0.2 # these weights can be adjusted
+alpha, beta, gamma, delta = 0.5, 0.2, 0.2, 0.1 # predefined weights
 
-# Formula
+# Formula: G = α·S_text + β·S_date + γ·S_place + δ·S_user
 
-G = alpha * S_text + beta * S_date + gamma * S_place
+G = alpha * S_text + beta * S_date + gamma * S_place + delta * 0  # No user similarity for now
 
 # Build neighbors: top 10 neighbors for each record
 top_k = 10

@@ -156,14 +156,21 @@
         
         const baseNeighbors = data.neighbors[demoSelectedItem.id] || [];
         
-        // Recalculate scores with current weights
+        // Normalize weights to sum to 1.0 for proper mathematical calculation
+        const sum = demoWeights.text + demoWeights.date + demoWeights.place + demoWeights.user;
+        const w_text = sum > 0 ? demoWeights.text / sum : 0;
+        const w_date = sum > 0 ? demoWeights.date / sum : 0;
+        const w_place = sum > 0 ? demoWeights.place / sum : 0;
+        const w_user = sum > 0 ? demoWeights.user / sum : 0;
+        
+        // Recalculate scores with normalized weights
         const scoredNeighbors = baseNeighbors.map((neighbor: any) => {
             const userScore = calculateUserSimilarity(neighbor.id);
             const weightedScore = 
-                demoWeights.text * neighbor.S_text +
-                demoWeights.date * neighbor.S_date +
-                demoWeights.place * neighbor.S_place +
-                demoWeights.user * userScore;
+                w_text * neighbor.S_text +
+                w_date * neighbor.S_date +
+                w_place * neighbor.S_place +
+                w_user * userScore;
             
             return {
                 ...neighbor,
@@ -190,33 +197,24 @@
     }
 
     function handleDemoItemClick(itemId: string) {
+        // Track the click for user interactions
         demoClickedItems.add(itemId);
         demoClickedItems = demoClickedItems;
         
-        // Increase user weight by 3 percentage points (max 40%)
-        if (demoWeights.user < 40) {
-            const increment = 3;
-            demoWeights.user += increment;
-            
-            // Proportionally reduce others (split reduction across 3 vectors)
-            const reduction = increment / 3;
-            demoWeights.text = Math.max(10, demoWeights.text - reduction);
-            demoWeights.date = Math.max(5, demoWeights.date - reduction);
-            demoWeights.place = Math.max(5, demoWeights.place - reduction);
+        // Make the clicked item the new selected item (like clicking a YouTube recommendation)
+        const clickedItem = $items.find(i => i.id === itemId);
+        if (clickedItem) {
+            demoSelectedItem = clickedItem;
         }
         
+        // User interaction similarity (S_user) increases automatically for clicked items
+        // but weights remain under your manual control
         updateDemoRecommendations();
     }
 
     function handleWeightChange() {
-        // Normalize weights to sum to 1.0
-        const sum = demoWeights.text + demoWeights.date + demoWeights.place + demoWeights.user;
-        if (sum > 0) {
-            demoWeights.text /= sum;
-            demoWeights.date /= sum;
-            demoWeights.place /= sum;
-            demoWeights.user /= sum;
-        }
+        // Just update recommendations - weights are already in percentage form (0-100)
+        // They'll be used directly in the weighted score calculation
         updateDemoRecommendations();
     }
 
@@ -492,10 +490,11 @@
         <div class="final-formula">
             <strong>Final "Good Neighbor Index":</strong>
             <p class="formula main">
-                <em>G = 0.5 × S<sub>text</sub> + 0.2 × S<sub>date</sub> + 0.2 × S<sub>place</sub> + 0.1 × S<sub>user</sub></em>
+                <em>G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub></em><br>
+                <em>where α + β + γ + δ = 1.0</em>
             </p>
             <p class="formula-note">
-                These weights (50%, 20%, 20%, 10%) are pre-allocated to ensure the formula always sums to 1.0. The user interaction weight starts at 10% with S<sub>user</sub>=0 (no browsing data yet), but can grow as visitors explore the archive. Users can dynamically adjust these weights to explore the archive through different relational lenses, emphasizing textual, temporal, spatial, or behavioral connections as desired.
+                The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. The backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1 as default values, which allocate 50% to textual similarity, 20% to temporal proximity, 20% to spatial proximity, and 10% to user interactions. The user interaction component starts at S<sub>user</sub>=0 (no browsing data yet) and increases as visitors explore the archive. These weights can be dynamically adjusted through the interactive demo to emphasize different relational dimensions.
             </p>
         </div>
     </div>
@@ -790,11 +789,14 @@
                     <li><strong>High user interaction weight</strong> → Surface items related to browsing patterns</li>
                 </ul>
                 <p>
-                    The final "Good Neighbor Index" becomes:
+                    The final "Good Neighbor Index" is calculated using adjustable weights for each similarity dimension:
                 </p>
                 <p class="formula">
-                    <em>G = w<sub>text</sub> × S<sub>text</sub> + w<sub>date</sub> × S<sub>date</sub> + w<sub>place</sub> × S<sub>place</sub> + w<sub>user</sub> × S<sub>user</sub></em><br>
-                    <em>where w<sub>text</sub> + w<sub>date</sub> + w<sub>place</sub> + w<sub>user</sub> = 1.0</em>
+                    <em>G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub></em><br>
+                    <em>where α + β + γ + δ = 1.0</em>
+                </p>
+                <p>
+                    The weights (α, β, γ, δ) can be freely adjusted to explore different perspectives. For example, the backend pre-computes neighbors using α=0.5, β=0.2, γ=0.2, δ=0.1, but these can be modified in real-time to emphasize different dimensions—whether prioritizing textual similarity, temporal proximity, spatial clustering, or user interaction patterns.
                 </p>
                 <p>
                     When weights are adjusted, the network visualization updates in real-time, reshaping the graph to reflect the chosen balance between computational similarity and personal exploration patterns.
@@ -806,8 +808,36 @@
     <h3>Interactive Demo: See It in Action</h3>
 
     <p>
-        The demonstration below shows how user interactions dynamically reshape item recommendations. Click on recommended items to simulate browsing behavior, and watch how the user interaction weight increases and the recommendations adapt in real-time.
+        The demonstration below shows how user interactions dynamically reshape item recommendations. Click on recommended items to simulate browsing behavior, and adjust the weight sliders to see how different similarity dimensions affect the ranking.
     </p>
+
+    <div class="methodology-callouts">
+        <details class="methodology-detail">
+            <summary>
+                <strong>How the Weight Sliders Work</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    The weight sliders allow exploration of how different similarity dimensions affect recommendations. The sliders can be set to any values—the system automatically normalizes them to ensure they sum to 1.0 for the calculation.
+                </p>
+                <p><strong>Example normalization:</strong></p>
+                <ul>
+                    <li><strong>Input:</strong> Textual=75, Temporal=45, Spatial=55, User=15 (sum = 190)</li>
+                    <li><strong>Normalized:</strong> 0.395, 0.237, 0.289, 0.079 (sum = 1.0)</li>
+                </ul>
+                <p class="formula">
+                    <em>G = (75/190) × S<sub>text</sub> + (45/190) × S<sub>date</sub> + (55/190) × S<sub>place</sub> + (15/190) × S<sub>user</sub></em>
+                </p>
+                <p>
+                    The resulting G coefficient ranges from 0 to 1, displayed as percentages in the recommendation cards. The <strong>S<sub>user</sub></strong> value is calculated dynamically based on clicked items: items that have been clicked receive S<sub>user</sub>=1.0, while items sharing neighbors with clicked items receive values between 0.3 and 0.9.
+                </p>
+                <p>
+                    <strong>Experiment:</strong> Set all weights to 0 except one at 100 to see recommendations based purely on a single dimension. Or distribute weights evenly (all at 25) to give equal importance to all factors.
+                </p>
+            </div>
+        </details>
+    </div>
 
     {#if demoSelectedItem}
         <div class="demo-container">
@@ -827,7 +857,7 @@
                             {demoSelectedItem.year || 'Unknown year'} • {demoSelectedItem.country || 'Unknown location'}
                         </p>
                         <p class="demo-instruction">
-                            💡 Click on recommended items to simulate browsing. The user interaction weight will increase automatically.
+                            💡 Click on recommended items to simulate browsing. Items you click will get higher similarity scores. Use the sliders below to adjust the weight balance.
                         </p>
                     </div>
                 </div>
@@ -890,7 +920,7 @@
                             />
                             <span class="weight-value highlight">{demoWeights.user.toFixed(0)}%</span>
                         </label>
-                        <span class="weight-note">↑ Increases as you click items</span>
+                        <span class="weight-note">💡 Adjust to see how browsing patterns affect results</span>
                     </div>
                 </div>
                 <button class="reset-button" on:click={resetDemo}>Reset Demo</button>

@@ -375,7 +375,7 @@
 
     // Add circles to nodes
     node.append('circle')
-      .attr('r', (d: GraphNode) => Math.max(3, Math.min(15, 3 + Math.sqrt(d.degree))))
+      .attr('r', (d: GraphNode) => Math.max(2.5, Math.min(8, 2.5 + Math.sqrt(d.degree) * 0.5)))
       .attr('fill', (d: GraphNode) => colorScheme[d.cluster % colorScheme.length])
       .attr('stroke', '#fff')
       .attr('stroke-width', 1.5)
@@ -433,14 +433,14 @@
     simulation = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
-        .distance((d: any) => 100 - d.score * 50)
-        .strength((d: any) => d.score))
+        .distance((d: any) => 120 - d.score * 40)
+        .strength((d: any) => d.score * 0.8))
       .force('charge', d3.forceManyBody()
-        .strength(-30)
-        .distanceMax(200))
+        .strength(-50)
+        .distanceMax(250))
       .force('cluster', forceCluster())
       .force('collision', d3.forceCollide()
-        .radius((d: any) => Math.max(3, Math.min(15, 3 + Math.sqrt(d.degree))) + 2))
+        .radius((d: any) => Math.max(2.5, Math.min(8, 2.5 + Math.sqrt(d.degree) * 0.5)) + 4))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .on('tick', ticked);
 

@@ -150,12 +150,24 @@
     const list = Array.isArray(neighMap)
       ? [] // can't compute detailed neighbors from edge list
       : (neighMap?.[id] ?? []);
+    
+    // Recalculate weighted scores based on current weights and user interactions
     return list
-      .slice(0, max)
-      .map((n: any) => ({
-        ...n,
-        item: $byId.get(n.id)
-      }));
+      .map((n: any) => {
+        const userScore = $userSimilarity.get([id, n.id].sort().join('|')) ?? 0;
+        const adjustedScore = 
+          NEIGHBOR_WEIGHTS.text * (n.S_text ?? 0) + 
+          NEIGHBOR_WEIGHTS.date * (n.S_date ?? 0) + 
+          NEIGHBOR_WEIGHTS.place * (n.S_place ?? 0) + 
+          NEIGHBOR_WEIGHTS.user * userScore;
+        return {
+          ...n,
+          item: $byId.get(n.id),
+          adjustedScore
+        };
+      })
+      .sort((a, b) => b.adjustedScore - a.adjustedScore)
+      .slice(0, max);
   }
 
   $: hoveredNeighbors = getNeighborsFor(currentId, topNeighborsCount);
@@ -483,23 +495,22 @@
                 {#each hoveredNeighbors as n}
                   {@const t = Array.isArray(n.item?.title) ? n.item?.title[0] : n.item?.title}
                   {@const userScore = $userSimilarity.get([currentId, n.id].sort().join('|')) ?? 0}
-                  {@const adjustedScore = NEIGHBOR_WEIGHTS.text * (n.S_text ?? 0) + NEIGHBOR_WEIGHTS.date * (n.S_date ?? 0) + NEIGHBOR_WEIGHTS.place * (n.S_place ?? 0) + NEIGHBOR_WEIGHTS.user * userScore}
                   <li class="py-2">
                     <div class="flex items-start justify-between gap-2">
                       <button class="text-left text-sm hover:underline" on:click={() => { selectedId.set(n.id); hoveredId = null; }}>
                         {t ?? n.title ?? n.id}
                       </button>
                       <span class="text-xs text-gray-600 whitespace-nowrap">
-                        {adjustedScore.toFixed(2)}
+                        {n.adjustedScore.toFixed(2)}
                         {#if userScore > 0}<span class="text-purple-600 ml-1" title="User interaction boost">↑</span>{/if}
                       </span>
                     </div>
                     <div class="mt-1">
                       <div class="flex items-center gap-2 text-[11px] text-gray-600 flex-wrap">
-                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>Text {Number(n.S_text ?? 0).toFixed(2)}</span>
-                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>Date {Number(n.S_date ?? 0).toFixed(2)}</span>
-                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>Place {Number(n.S_place ?? 0).toFixed(2)}</span>
-                        <span class="inline-flex items-center gap-1 {userScore > 0 ? 'text-purple-600 font-medium' : ''}"><span class="inline-block w-2 h-2 bg-purple-500 rounded"></span>User {userScore.toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-indigo-500 rounded"></span>Text {(NEIGHBOR_WEIGHTS.text * (n.S_text ?? 0)).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-emerald-500 rounded"></span>Date {(NEIGHBOR_WEIGHTS.date * (n.S_date ?? 0)).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 bg-amber-500 rounded"></span>Place {(NEIGHBOR_WEIGHTS.place * (n.S_place ?? 0)).toFixed(2)}</span>
+                        <span class="inline-flex items-center gap-1 {userScore > 0 ? 'text-purple-600 font-medium' : ''}"><span class="inline-block w-2 h-2 bg-purple-500 rounded"></span>User {(NEIGHBOR_WEIGHTS.user * userScore).toFixed(2)}</span>
                       </div>
                       
                     </div>

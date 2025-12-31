@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
 ##### Load Custom Gazetteer #####
-with open('data/mappings/manual_gazetteer.json', 'r', encoding='utf-8') as f:
+with open('static/data/gazetteer.json', 'r', encoding='utf-8') as f:
     gazetteer = json.load(f)
 
 ##### Load metadata #####

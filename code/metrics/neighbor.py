@@ -220,8 +220,8 @@ alpha, beta, gamma, delta = 0.5, 0.2, 0.2, 0.1 # predefined weights
 
 G = alpha * S_text + beta * S_date + gamma * S_place + delta * 0  # No user similarity for now
 
-# Build neighbors: top 10 neighbors for each record
-top_k = 10
+# Build neighbors: top 50 neighbors for each record
+top_k = 50
 neighbors = {}
 edges_rows = []
 

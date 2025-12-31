@@ -31,6 +31,7 @@
     let selectedEdge: { source: any; target: any; scores: any } | null = null;
     let expandedSimilarity: 'text' | 'date' | 'place' | null = null;
     let neighbors: Record<string, any[]> = {};
+    let filteredNeighbors: Record<string, any[]> = {};
     let edgesMap: Map<string, any> = new Map();
 
     // Interactive demo state
@@ -290,6 +291,17 @@
         // Build neighbors object for NetworkGraph
         neighbors = data.neighbors || {};
         
+        // Create filtered version with only top 10 neighbors for visualization
+        // This prevents over-dense networks while keeping all 50 for the demo
+        filteredNeighbors = Object.fromEntries(
+            Object.entries(neighbors).map(([key, neighborList]) => [
+                key,
+                neighborList
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .slice(0, 10)
+            ])
+        );
+        
         if (vectorMatrix) {
             katex.render(matrixLatex, vectorMatrix, {
                 throwOnError: false,
@@ -470,7 +482,7 @@
     <div class="graph-container">
         <NetworkGraph 
             items={$items.slice(0, 50)} 
-            neighbors={neighbors} 
+            neighbors={filteredNeighbors} 
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}
             maxNodes={50}

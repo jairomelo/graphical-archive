@@ -2,6 +2,7 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	
 	let { children } = $props();
 
@@ -15,12 +16,12 @@
 <!-- Header -->
 <header class="p-4 space-y-4">
   <div class="flex justify-between items-center">
-    <a href="/" class="text-2xl font-bold hover:opacity-80 transition-opacity" style="display: inline-block;">
+    <a href="{resolve(`/`)}" class="text-2xl font-bold hover:opacity-80 transition-opacity" style="display: inline-block;">
       <img src={favicon} alt="Graphical Archive logo" class="navbar-logo"> 
       Graphical Archive
     </a>
     <nav class="flex items-center gap-6">
-      <a href="/about" class="text-sm text-gray-600 hover:text-gray-900 transition-colors" class:active={currentPath === '/about'}>How to read</a>
+      <a href="{resolve(`/about`)}" class="text-sm text-gray-600 hover:text-gray-900 transition-colors" class:active={currentPath === '/about'}>How to read</a>
     </nav>
   </div>
 </header>
@@ -52,7 +53,7 @@
         <h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wide">Project</h3>
         <ul class="space-y-2 text-sm">
           <li>
-            <a href="/about" class="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
+            <a href="{resolve(`/about`)}" class="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
               <i class="bi bi-info-circle"></i>
               How to read
             </a>

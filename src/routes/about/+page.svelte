@@ -811,28 +811,30 @@
 
     {#if demoSelectedItem}
         <div class="demo-container">
-            <div class="demo-selected">
-                <div class="demo-thumbnail">
-                    {#if demoSelectedItem.thumbnail}
-                        <img src={demoSelectedItem.thumbnail} alt={formatTitle(demoSelectedItem)} />
-                    {:else}
-                        <div class="no-thumbnail">No image</div>
-                    {/if}
+            <!-- Left: Main Content -->
+            <div class="demo-main-content">
+                <div class="demo-selected">
+                    <div class="demo-thumbnail">
+                        {#if demoSelectedItem.thumbnail}
+                            <img src={demoSelectedItem.thumbnail} alt={formatTitle(demoSelectedItem)} />
+                        {:else}
+                            <div class="no-thumbnail">No image</div>
+                        {/if}
+                    </div>
+                    <div class="demo-details">
+                        <h4>{formatTitle(demoSelectedItem)}</h4>
+                        <p class="demo-meta">
+                            {demoSelectedItem.year || 'Unknown year'} • {demoSelectedItem.country || 'Unknown location'}
+                        </p>
+                        <p class="demo-instruction">
+                            💡 Click on recommended items to simulate browsing. The user interaction weight will increase automatically.
+                        </p>
+                    </div>
                 </div>
-                <div class="demo-details">
-                    <h4>{formatTitle(demoSelectedItem)}</h4>
-                    <p class="demo-meta">
-                        {demoSelectedItem.year || 'Unknown year'} • {demoSelectedItem.country || 'Unknown location'}
-                    </p>
-                    <p class="demo-instruction">
-                        💡 Click on recommended items below to simulate browsing. The user interaction weight will increase automatically.
-                    </p>
-                </div>
-            </div>
 
-            <div class="demo-weights">
-                <h5>Similarity Vector Weights</h5>
-                <div class="weight-controls">
+                <div class="demo-weights">
+                    <h5>Similarity Vector Weights</h5>
+                    <div class="weight-controls">
                     <div class="weight-item">
                         <label>
                             <span class="weight-label">Textual</span>
@@ -893,7 +895,9 @@
                 </div>
                 <button class="reset-button" on:click={resetDemo}>Reset Demo</button>
             </div>
+            </div>
 
+            <!-- Right: Recommendations Sidebar -->
             <div class="demo-recommendations">
                 <div class="recommendations-header">
                     <h5>Recommended Neighbors</h5>
@@ -1016,10 +1020,16 @@
 
 <style>
     .about-page {
-        max-width: 800px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;
         line-height: 1.6;
+    }
+
+    /* Wider container for demo section */
+    .demo-section {
+        max-width: 1400px;
+        margin: 2rem auto;
     }
 
     h1 {
@@ -1493,30 +1503,44 @@
 
     /* Interactive Demo Styles */
     .demo-container {
-        margin: 2rem 0;
+        margin: 2rem auto;
+        max-width: 1400px;
         padding: 2rem;
         background-color: #f8f9fa;
         border-radius: 12px;
         border: 2px solid #e0e0e0;
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+    }
+
+    @media (max-width: 1200px) {
+        .demo-container {
+            grid-template-columns: 1fr;
+            max-width: 800px;
+        }
+    }
+
+    .demo-main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
     }
 
     .demo-selected {
-        display: flex;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-        padding: 1.5rem;
         background-color: white;
         border-radius: 8px;
+        overflow: hidden;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .demo-thumbnail {
-        flex-shrink: 0;
-        width: 150px;
-        height: 150px;
-        border-radius: 6px;
-        overflow: hidden;
-        background-color: #f0f0f0;
+        width: 100%;
+        background-color: #000;
+        aspect-ratio: 16/9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .demo-thumbnail img {
@@ -1539,19 +1563,24 @@
     }
 
     .demo-details {
-        flex: 1;
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
     }
 
     .demo-details h4 {
         margin: 0 0 0.5rem 0;
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         color: #333;
+        line-height: 1.3;
     }
 
     .demo-meta {
         color: #666;
         font-size: 0.9rem;
         margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
     }
 
     .demo-instruction {
@@ -1565,9 +1594,8 @@
     }
 
     .demo-weights {
-        margin-bottom: 2rem;
-        padding: 1.5rem;
         background-color: white;
+        padding: 1.5rem;
         border-radius: 8px;
     }
 
@@ -1674,23 +1702,20 @@
     }
 
     .demo-recommendations {
-        padding: 1.5rem;
         background-color: white;
         border-radius: 8px;
+        padding: 1rem;
     }
 
     .recommendations-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        gap: 1rem;
-        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
     }
 
     .recommendations-header h5 {
-        margin: 0;
-        font-size: 1.1rem;
+        margin: 0 0 0.75rem 0;
+        font-size: 1rem;
         color: #333;
     }
 
@@ -1702,10 +1727,16 @@
 
     .display-control label {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.85rem;
         color: #666;
+        width: 100%;
+    }
+
+    .control-label {
+        display: flex;
+        justify-content: space-between;
     }
 
     .control-label strong {
@@ -1714,24 +1745,44 @@
     }
 
     .count-slider {
-        width: 150px;
+        width: 100%;
         height: 4px;
         cursor: pointer;
     }
 
     .recommendations-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
         max-height: 800px;
         overflow-y: auto;
         padding-right: 0.5rem;
     }
 
-    @media (max-width: 768px) {
+    /* Custom scrollbar styling */
+    .recommendations-grid::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .recommendations-grid::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    @media (max-width: 1200px) {
         .recommendations-grid {
-            grid-template-columns: repeat(2, 1fr);
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            max-height: none;
         }
     }
 
@@ -1742,6 +1793,15 @@
         overflow: hidden;
         cursor: pointer;
         transition: all 0.3s ease;
+        display: flex;
+        gap: 0.75rem;
+        min-height: 94px;
+    }
+
+    @media (max-width: 1200px) {
+        .recommendation-card {
+            flex-direction: column;
+        }
     }
 
     .recommendation-card:hover {
@@ -1761,19 +1821,47 @@
     }
 
     .recommendation-card img {
-        width: 100%;
-        height: 140px;
+        width: 168px;
+        height: 94px;
         object-fit: cover;
         margin: 0;
         box-shadow: none;
+        flex-shrink: 0;
+    }
+
+    .card-no-thumbnail {
+        width: 168px;
+        height: 94px;
+        background-color: #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 1200px) {
+        .recommendation-card img {
+            width: 100%;
+            height: 140px;
+        }
+
+        .card-no-thumbnail {
+            width: 100%;
+            height: 140px;
+        }
     }
 
     .card-info {
         padding: 0.75rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 
     .card-title {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 600;
         color: #333;
         margin-bottom: 0.5rem;

@@ -33,6 +33,7 @@
     let neighbors: Record<string, any[]> = {};
     let filteredNeighbors: Record<string, any[]> = {};
     let edgesMap: Map<string, any> = new Map();
+    let gazetteer: Record<string, any[]> = {};
 
     // Interactive demo state
     let demoSelectedItem: any = null;
@@ -90,6 +91,30 @@
     function formatArrayField(field: any): string {
         if (Array.isArray(field)) return field.join(', ');
         return field || 'N/A';
+    }
+
+    function getCoordinates(item: any): { lat: number; lon: number } | null {
+        // First try item's own coordinates
+        if (item.place_lat && item.place_lon) {
+            return { lat: item.place_lat, lon: item.place_lon };
+        }
+        
+        // Fallback to gazetteer using place_label
+        if (item.place_label && data.gazetteer) {
+            const placeLabel = Array.isArray(item.place_label) 
+                ? item.place_label[0] 
+                : item.place_label;
+            
+            const gazetteerEntry = data.gazetteer[placeLabel];
+            if (gazetteerEntry && gazetteerEntry.place_lat && gazetteerEntry.place_lon) {
+                return { 
+                    lat: gazetteerEntry.place_lat, 
+                    lon: gazetteerEntry.place_lon 
+                };
+            }
+        }
+        
+        return null;
     }
 
     // Demo functions
@@ -619,8 +644,12 @@
                                 <div class="field-group">
                                     <label>Coordinates:</label>
                                     <div class="field-value">
-                                        {#if selectedEdge.source.place_lat && selectedEdge.source.place_lon}
-                                            {selectedEdge.source.place_lat.toFixed(4)}, {selectedEdge.source.place_lon.toFixed(4)}
+                                        {#if getCoordinates(selectedEdge.source)}
+                                            {@const coords = getCoordinates(selectedEdge.source)}
+                                            {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
+                                            {#if !selectedEdge.source.place_lat || !selectedEdge.source.place_lon}
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer"></span>
+                                            {/if}
                                         {:else}
                                             N/A
                                         {/if}
@@ -640,8 +669,12 @@
                                 <div class="field-group">
                                     <label>Coordinates:</label>
                                     <div class="field-value">
-                                        {#if selectedEdge.target.place_lat && selectedEdge.target.place_lon}
-                                            {selectedEdge.target.place_lat.toFixed(4)}, {selectedEdge.target.place_lon.toFixed(4)}
+                                        {#if getCoordinates(selectedEdge.target)}
+                                            {@const coords = getCoordinates(selectedEdge.target)}
+                                            {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
+                                            {#if !selectedEdge.target.place_lat || !selectedEdge.target.place_lon}
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer"></span>
+                                            {/if}
                                         {:else}
                                             N/A
                                         {/if}
@@ -1405,6 +1438,15 @@
         font-size: 0.9rem;
         color: #333;
         word-wrap: break-word;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .gazetteer-badge {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        cursor: help;
     }
 
     sup {

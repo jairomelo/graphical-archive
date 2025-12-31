@@ -530,6 +530,101 @@
         This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time. Records might cluster across different collections if they share strong similarities in their attributes.
     </p>
 
+    <h3>The Fourth Vector: Visitor Interactions</h3>
+
+    <p>
+        Beyond the three computational similarity vectors (textual, temporal, and spatial), the Graphical Archive includes a <strong>fourth vector based on visitors' browsing behavior</strong>. This creates a personalized layer that adapts the network to each visitor's individual exploration patterns.
+    </p>
+
+    <p>
+        The metadata proximity calculations we've explored (textual, temporal, and spatial similarities) are pre-computed and stored in a middleware layer that provides the archive's initial shape. However, visitor interactions also play a crucial role in determining which connections become relevant during exploration. This is where collection boundaries blur, transforming the archive into a dynamic graphical space that adapts to visitors' interests in real-time.
+    </p>
+
+    <div class="methodology-callouts">
+        <details class="methodology-detail">
+            <summary>
+                <strong>User Interaction Similarity Calculation</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    As you navigate the archive—viewing items, bookmarking records, and exploring relationships—the system tracks which items you engage with. It then calculates similarity between items based on <strong>co-occurrence patterns</strong>: items that appear together in your browsing session are considered related.
+                </p>
+                <p><strong>Tracked interactions:</strong></p>
+                <ul>
+                    <li><code>Views</code> — Items you've clicked on or examined in detail</li>
+                    <li><code>Bookmarks</code> — Items you've explicitly saved for later reference</li>
+                    <li><code>View sequence</code> — The temporal order of your exploration (sliding window)</li>
+                </ul>
+                <p>
+                    The algorithm uses a <strong>sliding window approach</strong> for views: items viewed close together in time (within 5 items) are considered co-occurring. For bookmarks, all pairs of bookmarked items are treated as related.
+                </p>
+                <p class="formula">
+                    <em>S<sub>user</sub>(i, j) = 0.4 × co-view<sub>normalized</sub>(i, j) + 0.6 × co-bookmark<sub>normalized</sub>(i, j)</em>
+                </p>
+                <p>
+                    This creates a <strong>collaborative filtering effect</strong> but based on your individual session rather than aggregate user data. Items you've engaged with become more strongly connected, influencing which neighbors are suggested for subsequent items you explore.
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Privacy & Data Storage</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p class="note">
+                    <strong>Your data stays private:</strong> All interaction tracking is <em>session-based only</em>. Your browsing history is stored exclusively in your browser's <code>sessionStorage</code>, which is automatically cleared when you close the tab or browser window.
+                </p>
+                <p>
+                    <strong>What this means:</strong>
+                </p>
+                <ul>
+                    <li>No data is sent to external servers or databases</li>
+                    <li>No cookies are set for tracking across sessions</li>
+                    <li>Your exploration patterns are never stored permanently</li>
+                    <li>Other users never see your personalized network</li>
+                    <li>Closing the browser resets all interactions to zero</li>
+                </ul>
+                <p>
+                    <strong>Trade-off:</strong> Because interaction data is session-only, the user similarity vector cannot "train" or permanently modify the archive's network structure. Each visit starts fresh. This architectural choice prioritizes privacy over personalization persistence.
+                </p>
+                <p>
+                    If you want to reset your current session's interaction data at any time, simply refresh the page or close and reopen your browser tab.
+                </p>
+            </div>
+        </details>
+
+        <details class="methodology-detail">
+            <summary>
+                <strong>Dynamic Weight Adjustment</strong>
+                <span class="expand-icon">▶</span>
+            </summary>
+            <div class="detail-content">
+                <p>
+                    On the main archive interface, you can adjust the relative weights of all four similarity vectors using interactive sliders. This allows you to explore the archive through different lenses:
+                </p>
+                <ul>
+                    <li><strong>High textual weight</strong> → Prioritize items with similar topics, keywords, and descriptions</li>
+                    <li><strong>High temporal weight</strong> → Emphasize items from similar time periods</li>
+                    <li><strong>High spatial weight</strong> → Focus on geographic clustering</li>
+                    <li><strong>High user interaction weight</strong> → Surface items related to your browsing patterns</li>
+                </ul>
+                <p>
+                    The final "Good Neighbor Index" becomes:
+                </p>
+                <p class="formula">
+                    <em>G = w<sub>text</sub> × S<sub>text</sub> + w<sub>date</sub> × S<sub>date</sub> + w<sub>place</sub> × S<sub>place</sub> + w<sub>user</sub> × S<sub>user</sub></em><br>
+                    <em>where w<sub>text</sub> + w<sub>date</sub> + w<sub>place</sub> + w<sub>user</sub> = 1.0</em>
+                </p>
+                <p>
+                    As you adjust these weights, the network visualization updates in real-time, reshaping the graph to reflect your chosen balance between computational similarity and personal exploration patterns.
+                </p>
+            </div>
+        </details>
+    </div>
+
     <h2>Navigating the Archive</h2>
     <p>
         This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time.

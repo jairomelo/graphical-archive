@@ -39,7 +39,7 @@
     let demoWeights = { text: 50, date: 20, place: 20, user: 10 };
     let demoRecommendations: any[] = [];
     let demoAllRecommendations: any[] = [];
-    let demoDisplayCount: number = 10;
+    let demoDisplayCount: number = 15;
     let initialPositions: Map<string, number> = new Map();
 
     // Normalize neighbors data and build edges map
@@ -97,7 +97,7 @@
         const itemsArray = $items.filter(item => 
             item.thumbnail && 
             data.neighbors[item.id] && 
-            data.neighbors[item.id].length >= 5
+            data.neighbors[item.id].length >= 20
         );
         if (itemsArray.length > 0) {
             const randomIndex = Math.floor(Math.random() * Math.min(itemsArray.length, 50));
@@ -857,8 +857,8 @@
                             <span class="control-label">Show items: <strong>{demoDisplayCount}</strong></span>
                             <input 
                                 type="range" 
-                                min="5" 
-                                max="10" 
+                                min="8" 
+                                max="50" 
                                 bind:value={demoDisplayCount}
                                 on:input={handleDisplayCountChange}
                                 step="1"
@@ -1660,7 +1660,7 @@
     }
 
     .count-slider {
-        width: 120px;
+        width: 150px;
         height: 4px;
         cursor: pointer;
     }

@@ -6,7 +6,7 @@
 	
 	let { children } = $props();
 
-	let currentPath = page.url.pathname;
+	let currentPath = $derived(page.url.pathname);
 </script>
 
 <svelte:head>
@@ -21,7 +21,12 @@
       Graphical Archive
     </a>
     <nav class="flex items-center gap-6">
-      <a href="{resolve(`/about`)}" class="text-sm text-gray-600 hover:text-gray-900 transition-colors" class:active={currentPath === '/about'}>How to read</a>
+      {#if currentPath !== '/about'}
+        <a href="{resolve(`/about`)}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center gap-2">
+          <i class="bi bi-info-circle"></i>
+          How to read
+        </a>
+      {/if}
     </nav>
   </div>
 </header>

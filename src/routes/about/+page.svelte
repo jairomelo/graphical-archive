@@ -200,8 +200,8 @@
         
         // Sort by weighted score and store all
         demoAllRecommendations = scoredNeighbors
-            .filter(n => n.item)
-            .sort((a, b) => b.weightedScore - a.weightedScore);
+            .filter((n: any) => n.item)
+            .sort((a: any, b: any) => b.weightedScore - a.weightedScore);
         
         // Take the top N based on display count
         demoRecommendations = demoAllRecommendations.slice(0, demoDisplayCount);
@@ -560,15 +560,15 @@
                         <span class="score-label">Combined Score:</span>
                         <span class="score-value main">{(selectedEdge.scores.score * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('text')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('text')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('text')}>
                         <span class="score-label">Textual Similarity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_text * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('date')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('date')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('date')}>
                         <span class="score-label">Temporal Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_date * 100).toFixed(1)}%</span>
                     </div>
-                    <div class="score-item clickable" on:click={() => toggleSimilarityDetail('place')}>
+                    <div class="score-item clickable" role="button" tabindex="0" on:click={() => toggleSimilarityDetail('place')} on:keydown={(e) => e.key === 'Enter' && toggleSimilarityDetail('place')}>
                         <span class="score-label">Spatial Proximity: <span class="hint">(click to see fields)</span></span>
                         <span class="score-value">{(selectedEdge.scores.S_place * 100).toFixed(1)}%</span>
                     </div>
@@ -582,38 +582,38 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Title:</label>
+                                    <span class="field-label">Title:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.title)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Concepts:</label>
+                                    <span class="field-label">Concepts:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.concepts)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Description:</label>
+                                    <span class="field-label">Description:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.description)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Title:</label>
+                                    <span class="field-label">Title:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.title)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Concepts:</label>
+                                    <span class="field-label">Concepts:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.concepts)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Description:</label>
+                                    <span class="field-label">Description:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.description)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
                                 </div>
                             </div>
@@ -629,30 +629,30 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Year:</label>
+                                    <span class="field-label">Year:</span>
                                     <div class="field-value">{selectedEdge.source.year || 'Unknown'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date Begin:</label>
+                                    <span class="field-label">Date Begin:</span>
                                     <div class="field-value">{selectedEdge.source.date_begin || 'N/A'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date End:</label>
+                                    <span class="field-label">Date End:</span>
                                     <div class="field-value">{selectedEdge.source.date_end || 'N/A'}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Year:</label>
+                                    <span class="field-label">Year:</span>
                                     <div class="field-value">{selectedEdge.target.year || 'Unknown'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date Begin:</label>
+                                    <span class="field-label">Date Begin:</span>
                                     <div class="field-value">{selectedEdge.target.date_begin || 'N/A'}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Date End:</label>
+                                    <span class="field-label">Date End:</span>
                                     <div class="field-value">{selectedEdge.target.date_end || 'N/A'}</div>
                                 </div>
                             </div>
@@ -668,13 +668,13 @@
                             <div class="comparison-column">
                                 <strong>Source Node</strong>
                                 <div class="field-group">
-                                    <label>Coordinates:</label>
+                                    <span class="field-label">Coordinates:</span>
                                     <div class="field-value">
                                         {#if getCoordinates(selectedEdge.source)}
                                             {@const coords = getCoordinates(selectedEdge.source)}
-                                            {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
+                                            {coords?.lat.toFixed(4)}, {coords?.lon.toFixed(4)}
                                             {#if !selectedEdge.source.place_lat || !selectedEdge.source.place_lon}
-                                                <span class="gazetteer-badge" title="Coordinates from gazetteer"></span>
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer">📍</span>
                                             {/if}
                                         {:else}
                                             N/A
@@ -682,24 +682,24 @@
                                     </div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.source.place_label)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Country:</label>
+                                    <span class="field-label">Country:</span>
                                     <div class="field-value">{selectedEdge.source.country || 'N/A'}</div>
                                 </div>
                             </div>
                             <div class="comparison-column">
                                 <strong>Target Node</strong>
                                 <div class="field-group">
-                                    <label>Coordinates:</label>
+                                    <span class="field-label">Coordinates:</span>
                                     <div class="field-value">
                                         {#if getCoordinates(selectedEdge.target)}
                                             {@const coords = getCoordinates(selectedEdge.target)}
-                                            {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
+                                            {coords?.lat.toFixed(4)}, {coords?.lon.toFixed(4)}
                                             {#if !selectedEdge.target.place_lat || !selectedEdge.target.place_lon}
-                                                <span class="gazetteer-badge" title="Coordinates from gazetteer"></span>
+                                                <span class="gazetteer-badge" title="Coordinates from gazetteer">📍</span>
                                             {/if}
                                         {:else}
                                             N/A
@@ -707,11 +707,11 @@
                                     </div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Place Label:</label>
+                                    <span class="field-label">Place Label:</span>
                                     <div class="field-value">{formatArrayField(selectedEdge.target.place_label)}</div>
                                 </div>
                                 <div class="field-group">
-                                    <label>Country:</label>
+                                    <span class="field-label">Country:</span>
                                     <div class="field-value">{selectedEdge.target.country || 'N/A'}</div>
                                 </div>
                             </div>
@@ -720,9 +720,9 @@
                 {/if}
                 
                 <p class="score-explanation">
-                    This edge represents a weighted combination of the three similarity vectors. The combined score is calculated as:
-                    <em>0.5 × Textual + 0.2 × Temporal + 0.2 × Spatial + 0.1 × User</em>
-                    <br>(User interactions not shown here as this is pre-computed data)
+                    This edge represents a weighted combination of the four similarity vectors. The combined score is calculated using the formula:
+                    G = α × S<sub>text</sub> + β × S<sub>date</sub> + γ × S<sub>place</sub> + δ × S<sub>user</sub>
+                    <br>(User interactions not shown here as this is pre-computed data with default weights α=0.5, β=0.2, γ=0.2, δ=0.1)
                 </p>
             </div>
         </div>
@@ -979,6 +979,7 @@
                             class:clicked={demoClickedItems.has(rec.id)}
                             class:user-influenced={rec.userScore > 0}
                             on:click={() => handleDemoItemClick(rec.id)}
+                            on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? (e.preventDefault(), handleDemoItemClick(rec.id)) : null}
                             role="button"
                             tabindex="0"
                         >
@@ -990,7 +991,7 @@
                             <div class="card-info">
                                 <div class="card-title">{formatTitle(rec.item)}</div>
                                 <div class="card-score">
-                                    Score: {(rec.weightedScore).toFixed(0)}%
+                                    Neighborness: {(rec.weightedScore * 100).toFixed(0)}%
                                     {#if rec.userScore > 0}
                                         <span class="user-badge" title="Boosted by user interactions">👤</span>
                                     {/if}
@@ -1020,12 +1021,7 @@
     {/if}
 
     <p>
-        This four-dimensional similarity space allows for rich, multi-faceted exploration of archival relationships—combining objective metadata analysis with subjective browsing behavior, while maintaining complete privacy and session-level personalization.
-    </p>
-
-    <h2>Navigating the Archive</h2>
-    <p>
-        This is a different approach compared to filtering or faceting mechanisms commonly used in digital archives, where the connections are pre-defined and static. Here, the relationships are fluid and can be adjusted in real-time.
+        The number of displayed neighbors directly impacts the balance between precision and discovery. Showing only the top 8 neighbors emphasizes the strongest relationships, making it easier for clicked items to dominate the recommendations; ideal for focused exploration within tightly related clusters (e.g., same collection, time period, or location). In contrast, expanding to 50 neighbors surfaces weaker but potentially interesting connections, enabling broader discovery across the archive's scattered elements. The optimal choice depends entirely on the visitor's exploration strategy: depth versus breadth, familiar versus unexpected.
     </p>
 
     <h2>Navigating the Archive</h2>
@@ -1082,11 +1078,7 @@
         line-height: 1.6;
     }
 
-    /* Wider container for demo section */
-    .demo-section {
-        max-width: 1400px;
-        margin: 2rem auto;
-    }
+
 
     h1 {
         font-size: 2.5rem;
@@ -1235,11 +1227,6 @@
         font-family: 'Georgia', serif;
     }
 
-    .formula em {
-        font-style: italic;
-        color: #004499;
-    }
-
     .note {
         background-color: #fff9e6;
         border-left: 4px solid #ffc107;
@@ -1270,10 +1257,6 @@
         background-color: rgba(255, 255, 255, 0.15);
         border-left: 4px solid white;
         font-size: 1.1rem;
-    }
-
-    .formula.main em {
-        color: white;
     }
 
     .formula-note {
@@ -1419,12 +1402,6 @@
         line-height: 1.6;
     }
 
-    .score-explanation em {
-        font-style: italic;
-        color: #0066cc;
-        font-weight: 600;
-    }
-
     .metadata-comparison {
         margin-top: 1.5rem;
         padding: 1.5rem;
@@ -1489,7 +1466,7 @@
         margin-bottom: 0.75rem;
     }
 
-    .field-group label {
+    .field-label {
         display: block;
         font-weight: 600;
         color: #555;
@@ -1691,6 +1668,7 @@
         background: #e0e0e0;
         outline: none;
         -webkit-appearance: none;
+        appearance: none;
     }
 
     .weight-item input[type="range"]::-webkit-slider-thumb {
@@ -1924,6 +1902,7 @@
         line-height: 1.3;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }

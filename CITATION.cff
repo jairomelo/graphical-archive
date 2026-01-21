@@ -1,12 +1,14 @@
 cff-version: 1.2.0
 title: The Graphical Archive
-message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+message: "If you use this software, please cite it as below."
 type: software
 authors:
   - given-names: Jairo Antonio
     family-names: Melo Flórez
     orcid: 'https://orcid.org/0000-0002-2020-1163'
 license: MIT
-doi: 10.5281/zenodo.18330666
+identifiers: 
+  - type: doi
+    value: 10.5281/zenodo.18330666
+version: 0.1.0-beta
+date-released: 2026-01-21

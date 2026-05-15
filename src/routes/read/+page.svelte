@@ -1,6 +1,6 @@
 <script lang="ts">
     /**
-     * @fileoverview About page for the Graphical Archive project.
+     * @fileoverview Read more page for the Graphical Archive project.
      * This page provides information on how to read and navigate the archive.
      * 
      * @requires svelte
@@ -373,7 +373,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
 </svelte:head>
 
-<article class="about-page">
+<article class="read-page">
     <div class="text-body">
     <h1>How to read the Graphical Archive</h1>
 
@@ -1085,7 +1085,7 @@
 </article>
 
 <style>
-    .about-page {
+    .read-page {
         max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;

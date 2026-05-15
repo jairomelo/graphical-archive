@@ -21,8 +21,8 @@
       Graphical Archive
     </a>
     <nav class="flex items-center gap-6">
-      {#if currentPath !== '/about'}
-        <a href="{resolve(`/about`)}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center gap-2">
+      {#if currentPath !== '/read'}
+        <a href="{resolve(`/read`)}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center gap-2">
           <i class="bi bi-info-circle"></i>
           How to read
         </a>
@@ -41,7 +41,7 @@
   <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- Main footer content -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-      <!-- About section -->
+      <!-- Read more section -->
       <div class="space-y-3">
         <div class="flex items-center gap-2 mb-3">
           <img src={favicon} alt="Logo" class="h-6 w-6">
@@ -58,7 +58,7 @@
         <h3 class="font-semibold text-gray-900 text-sm uppercase tracking-wide">Project</h3>
         <ul class="space-y-2 text-sm">
           <li>
-            <a href="{resolve(`/about`)}" class="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
+            <a href="{resolve(`/read`)}" class="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
               <i class="bi bi-info-circle"></i>
               How to read
             </a>
